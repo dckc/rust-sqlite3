@@ -108,6 +108,39 @@ impl<'db> SqliteStatement<'db> {
     pub fn new<'db>(stmt: *mut ffi::sqlite3_stmt) -> SqliteStatement<'db> {
         SqliteStatement { stmt: stmt }
     }
+
+    pub fn query(&mut self) -> SqliteResult<SqliteRows> {
+        {
+            let r = unsafe { ffi::sqlite3_reset(self.stmt) };
+            try!(decode_result(r, "sqlite3_reset"))
+        }
+        Ok(SqliteRows::new(self))
+    }
+}
+
+
+pub struct SqliteRows<'s> {
+    statement: &'s mut SqliteStatement<'s>,
+}
+
+impl<'s> SqliteRows<'s> {
+    pub fn new(statement: &'s mut SqliteStatement) -> SqliteRows<'s> {
+        SqliteRows { statement: statement }
+    }
+}
+
+impl<'s> Iterator<SqliteResult<()>> for SqliteRows<'s> {
+    fn next(&mut self) -> Option<SqliteResult<()>> {
+        let r = unsafe { ffi::sqlite3_step(self.statement.stmt) } as uint;
+        match from_uint::<SqliteStep>(r) {
+            Some(SQLITE_ROW) => Some(Ok(())),
+            Some(SQLITE_DONE) => None,
+            None => {
+                let err = from_uint::<SqliteError>(r);
+                Some(Err(err.unwrap()))
+            }
+        }
+    }
 }
 
 
@@ -196,5 +229,21 @@ mod tests {
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
+    }
+
+
+    #[test]
+    fn query_two_rows() {
+        fn go() -> SqliteResult<uint> {
+            let mut count = 0;
+
+            let mut db = try!(SqliteConnection::new());
+            let mut s = try!(db.prepare("select 1 union all select 2"));
+            for row in try!(s.query()) {
+                count += 1
+            }
+            Ok(count)
+        }
+        assert_eq!(go(), Ok(2))
     }
 }
