@@ -1,5 +1,6 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
+#![feature(unsafe_destructor)]
 
 extern crate libc;
 
@@ -30,18 +31,85 @@ impl SqliteConnection {
     // TODO: use support _v2 interface with flags
     // TODO: integrate sqlite3_errmsg()
     pub fn new() -> Result<SqliteConnection, SqliteError> {
-        let memory = ":memory:".as_ptr() as *const ::libc::c_char;
-        let mut db = ptr::mut_null::<ffi::sqlite3>();
-        let result = unsafe { ffi::sqlite3_open(memory, &mut db) };
-        match result {
-            ok if ok == SQLITE_OK as c_int => Ok(SqliteConnection { db: db }),
-            err => {
+        let mut db = ptr::mut_null();
+        let result = ":memory:".with_c_str({
+            |memory|
+            unsafe { ffi::sqlite3_open(memory, &mut db) }
+        });
+        match decode_result(result, "sqlite3_open") {
+            Ok(()) => Ok(SqliteConnection { db: db }),
+            Err(err) => {
+                // "Whether or not an error occurs when it is opened,
+                // resources associated with the database connection
+                // handle should be released by passing it to
+                // sqlite3_close() when it is no longer required."
                 unsafe { ffi::sqlite3_close_v2(db) };
-                Err(decode_error(err).unwrap())
+                Err(err)
             }
         }
     }
+
+    /// Prepare/compile an SQL statement.
+    /// See http://www.sqlite.org/c3ref/prepare.html
+    pub fn prepare<'db>(&'db mut self, sql: &str) -> SqliteResult<SqliteStatement<'db>> {
+        match self.prepare_with_offset(sql) {
+            Ok((cur, _)) => Ok(cur),
+            Err(e) => Err(e)
+        }
+    }
+                
+    pub fn prepare_with_offset<'db>(&'db mut self, sql: &str) -> SqliteResult<(SqliteStatement<'db>, uint)> {
+        let mut stmt = ptr::mut_null();
+        let mut tail = ptr::null();
+        let z_sql = sql.as_ptr() as *const ::libc::c_char;
+        let n_byte = sql.len() as c_int;
+        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
+        match decode_result(r, "sqlite3_prepare_v2") {
+            Ok(()) => {
+                let offset = tail as uint - z_sql as uint;
+                Ok((SqliteStatement::new(stmt), offset))
+            },
+            Err(code) => Err(code)
+        }
+    }
+
 }
+
+
+pub struct SqliteStatement<'db> {
+    stmt: *mut ffi::sqlite3_stmt
+}
+
+#[unsafe_destructor]
+impl<'db> Drop for SqliteStatement<'db> {
+    fn drop(&mut self) {
+        unsafe {
+
+            // We ignore the return code from finalize because:
+
+            // "If If the most recent evaluation of statement S
+            // failed, then sqlite3_finalize(S) returns the
+            // appropriate error codethe most recent evaluation of
+            // statement S failed, then sqlite3_finalize(S) returns
+            // the appropriate error code"
+
+            // "The sqlite3_finalize(S) routine can be called at any
+            // point during the life cycle of prepared statement S"
+
+            ffi::sqlite3_finalize(self.stmt);
+        }
+    }
+}
+
+
+impl<'db> SqliteStatement<'db> {
+    // Only a SqliteCursor can call this constructor
+    #[allow(visible_private_types)]
+    pub fn new<'db>(stmt: *mut ffi::sqlite3_stmt) -> SqliteStatement<'db> {
+        SqliteStatement { stmt: stmt }
+    }
+}
+
 
 // ref http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -52,7 +120,7 @@ enum SqliteOk {
 
 
 #[must_use]
-type SqliteResult<T> = Result<T, SqliteError>;
+pub type SqliteResult<T> = Result<T, SqliteError>;
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
@@ -86,8 +154,15 @@ pub enum SqliteError {
 }
 
 #[inline]
-pub fn decode_error(err: c_int) -> Option<SqliteError> {
-    from_uint::<SqliteError>(err as uint)
+pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
+    if result == SQLITE_OK as c_int {
+        Ok(())
+    } else {
+        match from_uint::<SqliteError>(result as uint) {
+            Some(code) => Err(code),
+            None => fail!("{} returned unexpected {:d}", context, result)
+        }
+    }
 }
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -107,10 +182,19 @@ enum SqliteStep {
 
 #[cfg(test)]
 mod tests {
-    use super::SqliteConnection;
+    use super::{SqliteConnection, SqliteResult};
 
     #[test]
     fn db_new_types() {
         SqliteConnection::new().unwrap();
+    }
+
+    #[test]
+    fn stmt_new_types() {
+        fn go() -> SqliteResult<()> {
+            let mut db = try!(SqliteConnection::new());
+            db.prepare("select 1 + 1").map( |_s| () )
+        }
+        go().unwrap();
     }
 }
