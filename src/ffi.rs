@@ -516,6 +516,7 @@ pub struct Struct___va_list_tag {
     pub overflow_arg_area: *mut ::libc::c_void,
     pub reg_save_area: *mut ::libc::c_void,
 }
+#[link(name = "sqlite3")]
 extern "C" {
     pub static mut sqlite3_version: *const ::libc::c_char;
     pub static mut sqlite3_temp_directory: *mut ::libc::c_char;
