@@ -1,4 +1,4 @@
-% Rust-Sqlite3
+# Rust-Sqlite3
 
 Rustic bindings for sqlite3.
 
