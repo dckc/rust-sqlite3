@@ -7,7 +7,9 @@ extern crate libc;
 use libc::c_int;
 use std::num::from_uint;
 use std::ptr;
+use std::c_str;
 
+mod safe;
 #[allow(non_camel_case_types, dead_code)]
 mod ffi;
 
@@ -129,20 +131,61 @@ impl<'s> SqliteRows<'s> {
     }
 }
 
-impl<'s> Iterator<SqliteResult<()>> for SqliteRows<'s> {
-    fn next(&mut self) -> Option<SqliteResult<()>> {
-        let r = unsafe { ffi::sqlite3_step(self.statement.stmt) } as uint;
-        match from_uint::<SqliteStep>(r) {
-            Some(SQLITE_ROW) => Some(Ok(())),
+impl<'s> SqliteRows<'s> {
+    // An sqlite "row" only lasts until the next call to step(),
+    // so this can't match the Iterator trait.
+    pub fn next<'r>(&'r mut self) -> Option<SqliteResult<SqliteRow<'s, 'r>>> {
+        let result = unsafe { ffi::sqlite3_step(self.statement.stmt) } as uint;
+        match from_uint::<SqliteStep>(result) {
+            Some(SQLITE_ROW) => {
+                Some(Ok(SqliteRow{ rows: self }))
+            },
             Some(SQLITE_DONE) => None,
             None => {
-                let err = from_uint::<SqliteError>(r);
+                let err = from_uint::<SqliteError>(result);
                 Some(Err(err.unwrap()))
             }
         }
     }
 }
 
+
+pub struct SqliteRow<'s, 'r> {
+    rows: &'r mut SqliteRows<'s>
+}
+
+impl<'s, 'r> SqliteRow<'s, 'r> {
+
+    // TODO: consider returning Option<uint>
+    // "This routine returns 0 if pStmt is an SQL statement that does
+    // not return data (for example an UPDATE)."
+    pub fn column_count(&self) -> uint {
+        let stmt = self.rows.statement.stmt;
+        let result = unsafe { ffi::sqlite3_column_count(stmt) };
+        result as uint
+    }
+
+    // See http://www.sqlite.org/c3ref/column_name.html
+    pub fn with_column_name<T>(&mut self, i: uint, default: T, f: |&str| -> T) -> T {
+        let stmt = self.rows.statement.stmt;
+        let n = i as c_int;
+        let result = unsafe { ffi::sqlite3_column_name(stmt, n) };
+        if result == ptr::null() { default }
+        else {
+            let name = unsafe { c_str::CString::new(result, false) };
+            match name.as_str() {
+                Some(name) => f(name),
+                None => default
+            }
+        }
+    }
+
+    pub fn column_int(&self, col: uint) -> i32 {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        unsafe { ffi::sqlite3_column_int(stmt, i_col) }
+    }
+}
 
 // ref http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -215,7 +258,7 @@ enum SqliteStep {
 
 #[cfg(test)]
 mod tests {
-    use super::{SqliteConnection, SqliteResult};
+    use super::{SqliteConnection, SqliteResult, SqliteRows};
 
     #[test]
     fn db_new_types() {
@@ -232,18 +275,58 @@ mod tests {
     }
 
 
+    fn with_query<T>(sql: &str, f: |rows: &mut SqliteRows| -> T) -> SqliteResult<T> {
+        let mut db = try!(SqliteConnection::new());
+        let mut s = try!(db.prepare(sql));
+        let mut rows = try!(s.query());
+        Ok(f(&mut rows))
+    }
+
     #[test]
     fn query_two_rows() {
-        fn go() -> SqliteResult<uint> {
+        fn go() -> SqliteResult<(uint, i32)> {
             let mut count = 0;
+            let mut sum = 0;
 
-            let mut db = try!(SqliteConnection::new());
-            let mut s = try!(db.prepare("select 1 union all select 2"));
-            for row in try!(s.query()) {
-                count += 1
-            }
-            Ok(count)
+            with_query("select 1
+                       union all
+                       select 2", |rows| {
+                loop {
+                    match rows.next() {
+                        Some(Ok(ref mut row)) => {
+                            count += 1;
+                            sum += row.get(0u)
+                        },
+                        _ => break
+                    }
+                }
+                (count, sum)
+            })
         }
-        assert_eq!(go(), Ok(2))
+        assert_eq!(go(), Ok((2, 3)))
+    }
+
+    #[test]
+    fn named_rowindex() {
+        fn go() -> SqliteResult<(uint, i32)> {
+            let mut count = 0;
+            let mut sum = 0;
+
+            with_query("select 1 as col1
+                       union all
+                       select 2", |rows| {
+                loop {
+                    match rows.next() {
+                        Some(Ok(ref mut row)) => {
+                            count += 1;
+                            sum += row.get("col1")
+                        },
+                        _ => break
+                    }
+                }
+                (count, sum)
+            })
+        }
+        assert_eq!(go(), Ok((2, 3)))
     }
 }
