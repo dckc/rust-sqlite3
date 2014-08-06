@@ -1,16 +1,31 @@
 # Continuous Integration build configuration
-# cribbed from travis-ci/travis-ci-rust-example and rust-ci docs
-#  - https://github.com/travis-ci/travis-ci-rust-example/blob/master/.travis.yml
+#
+# cribbed from sfackler
+#  - https://github.com/sfackler/rust-postgres/blob/master/.travis.yml
+#
+# See also:
 #  - http://www.rust-ci.org/p/390/artifactconf
 
 env:
   global:
     - secure: m2iDrN+Y6m/MvPA3qGK7CdBgkx4rSoW+SZATdH1DhAl6kaPWmv18u6iSj8zf5g+/cFyubgt6HIfKJm0WBZr/vdAIP9qtVBTAkAXocg0ntCmCnt0giwph8WSo1SfFu/oX/Yy4vDwsuJNS73j8dPXN7rl4Nf3CC6kcRKjg2o6JaT4=
 
-language: rust
+install:
+  - curl http://www.rust-lang.org/rustup.sh | sudo sh -
+script:
+  - cargo test
+  - rustdoc -L target --test src/lib.rs
+  - cargo doc --no-deps
+after_script:
+  - mv target/doc .
+  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
+
 
 # We rely on libsqlite3-dev, which seems to be part of the default
 # travis-ci build environment.
 
-after_script:
-  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
+# In travis-ci-rust-example, it just has:
+#   language: rust
+# but this doesn't seem to suffice for building docs.
+#  - https://github.com/travis-ci/travis-ci-rust-example/blob/master/.travis.yml
+
