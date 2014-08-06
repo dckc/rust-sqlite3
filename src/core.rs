@@ -8,6 +8,7 @@ use super::{SQLITE_DONE, SQLITE_ROW};
 
 use ffi;
 
+/// A connection to a sqlite3 database.
 pub struct SqliteConnection {
     // not pub so that nothing outside this module
     // interferes with the lifetime
@@ -87,6 +88,7 @@ impl SqliteConnection {
 }
 
 
+/// A prepared statement.
 pub struct SqliteStatement<'db> {
     stmt: *mut ffi::sqlite3_stmt
 }
@@ -130,6 +132,7 @@ impl<'db> SqliteStatement<'db> {
 }
 
 
+/// Results of executing a `prepare()`d statement.
 pub struct SqliteRows<'s> {
     statement: &'s mut SqliteStatement<'s>,
 }
@@ -141,8 +144,11 @@ impl<'s> SqliteRows<'s> {
 }
 
 impl<'s> SqliteRows<'s> {
-    // An sqlite "row" only lasts until the next call to step(),
-    // so this can't match the Iterator trait.
+    /// Iterate over rows resulting from execution of a prepared statement.
+    ///
+    /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
+    /// so we need a lifetime constraint. The unfortunate result is that
+    ///  `SqliteRows` cannot implement the `Iterator` trait.
     pub fn next<'r>(&'r mut self) -> Option<SqliteResult<SqliteRow<'s, 'r>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) } as uint;
         match from_uint::<SqliteStep>(result) {
@@ -159,6 +165,7 @@ impl<'s> SqliteRows<'s> {
 }
 
 
+/// Access to columns of a row.
 pub struct SqliteRow<'s, 'r> {
     rows: &'r mut SqliteRows<'s>
 }

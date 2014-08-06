@@ -9,11 +9,14 @@ Share and enjoy. LICENSE: MIT.
 [dckc]: http://www.madmode.com/
 
 
-## Status
+## Documentation, Status
 
-Basic API design issues worked out, but only a handful of features supported.
+[rust-sqlite3 package documentation][docs] is hosted on rust-ci.
 
- - TODO: docs at rust-ci
+[docs]: http://www.rust-ci.org/dckc/rust-sqlite3/doc/sqlite3/
+
+Basic API design issues are worked out, but only a handful of features are supported.
+
  - TODO: the other 95% of the relevant features
 
 <div>

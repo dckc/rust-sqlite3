@@ -1,5 +1,41 @@
-// largely derivative of https://github.com/linuxfood/rustsqlite
-// inspired by http://www.rust-ci.org/sfackler/rust-postgres/
+//! `rust-sqlite3` is a rustic binding to the [sqlite3 API][].
+//!
+//! [sqlite3 API]: http://www.sqlite.org/c3ref/intro.html
+//!
+//! ```rust
+//! extern crate sqlite3;
+//!
+//! use sqlite3::{SqliteConnection};
+//!
+//! struct Person {
+//!     id: i32,
+//! }
+//!
+//! fn main() {
+//!     let mut conn = SqliteConnection::new().unwrap();
+//!
+//!     let mut stmt = conn.prepare("SELECT 0, 'Steven'").unwrap();
+//!     let mut rows = stmt.query().unwrap();
+//!     loop {
+//!         match rows.next() {
+//!             Some(Ok(ref mut row)) => {
+//!                 let person = Person {
+//!                     id: row.get(0u)
+//!                 };
+//!                 println!("Found person {}", person.id);
+//!             },
+//!             _ => break
+//!         }
+//!     }
+//! }
+//! ```
+//!
+//! *This example, inspired by sfackler's example in rust-postgres, is lacking
+//! some basic pieces:*
+//!
+//!  - TODO: FromSql for String
+//!  - TODO: bindings, including Timespec, Vec<u8>
+//!  - TODO: conn.execute
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
@@ -35,9 +71,17 @@ impl<'s, 'r> core::SqliteRow<'s, 'r> {
 
 }
 
-
+/// A trait for result values from a query.
+///
+/// cf [sqlite3 result values][column].
+///
+/// *inspired by sfackler's FromSql (and some haskell bindings?)*
+///
+/// [column]: http://www.sqlite.org/c3ref/column_blob.html
+///
+///   - TODO: consider a `types` submodule
+///   - TODO: many more implementors, including Option<T>
 trait FromSql {
-    // row is provided in case you want to get the sqlite type of that col
     fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<Self>;
 }
 
@@ -45,7 +89,10 @@ impl FromSql for i32 {
     fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
 }
 
-// inspired by http://www.rust-ci.org/sfackler/rust-postgres/doc/postgres/trait.RowIndex.html
+/// A trait implemented by types that can index into columns of a row.
+///
+/// *inspired by sfackler's [RowIndex][]*
+/// [RowIndex]: http://www.rust-ci.org/sfackler/rust-postgres/doc/postgres/trait.RowIndex.html
 pub trait RowIndex {
     fn idx(&self, row: &mut SqliteRow) -> Option<uint>;
 }
@@ -70,9 +117,20 @@ enum SqliteOk {
 }
 
 
+/// The type used for returning and propagating sqlite3 errors.
 #[must_use]
 pub type SqliteResult<T> = Result<T, SqliteError>;
 
+/// Result codes for errors.
+///
+/// cf. [sqlite3 result codes][codes].
+///
+/// Note `SQLITE_OK` is not included; we use `Ok(...)` instead.
+///
+/// Likewise, in place of `SQLITE_ROW` and `SQLITE_DONE`, we return
+/// `Some(...)` or `None` from `SqliteRows::next()`.
+///
+/// [codes]: http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 pub enum SqliteError {
@@ -106,7 +164,8 @@ pub enum SqliteError {
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-pub enum SqliteLogLevel {
+// TODO: use, test this
+enum SqliteLogLevel {
     SQLITE_NOTICE    = 27,
     SQLITE_WARNING   = 28,
 }
