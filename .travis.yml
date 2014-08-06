@@ -1,3 +1,4 @@
+# Continuous Integration build configuration
 # cribbed from travis-ci/travis-ci-rust-example
 # https://github.com/travis-ci/travis-ci-rust-example/blob/master/.travis.yml
 language: rust
