@@ -15,8 +15,22 @@ pub struct SqliteConnection {
 }
 
 impl Drop for SqliteConnection {
+    /// Release resources associated with connection.
+    ///
+    /// # Failure
+    ///
+    /// Fails if "the database connection is associated with
+    /// unfinalized prepared statements or unfinished sqlite3_backup
+    /// objects"[1] which the Rust memory model ensures is impossible
+    /// (barring bugs in the use of unsafe blocks in the implementation
+    /// of this library).
+    ///
+    /// [1]: http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
-        let ok = unsafe { ffi::sqlite3_close_v2(self.db) };
+        // sqlite3_close_v2 was not introduced until 2012-09-03 (3.7.14)
+        // but we want to build on, e.g. travis, i.e. Ubuntu 12.04.
+        // let ok = unsafe { ffi::sqlite3_close_v2(self.db) };
+        let ok = unsafe { ffi::sqlite3_close(self.db) };
         assert_eq!(ok, SQLITE_OK as c_int);
     }
 }
@@ -40,7 +54,7 @@ impl SqliteConnection {
                 // resources associated with the database connection
                 // handle should be released by passing it to
                 // sqlite3_close() when it is no longer required."
-                unsafe { ffi::sqlite3_close_v2(db) };
+                unsafe { ffi::sqlite3_close(db) };
                 Err(err)
             }
         }

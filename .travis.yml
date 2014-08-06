@@ -2,6 +2,6 @@
 # cribbed from travis-ci/travis-ci-rust-example
 # https://github.com/travis-ci/travis-ci-rust-example/blob/master/.travis.yml
 language: rust
-install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -y libsqlite3-dev
+
+# We rely on libsqlite3-dev, which seems to be part of the default
+# travis-ci build environment.
