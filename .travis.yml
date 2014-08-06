@@ -13,6 +13,7 @@ env:
 install:
   - curl http://www.rust-lang.org/rustup.sh | sudo sh -
 script:
+  - cargo build
   - cargo test
   - rustdoc -L target --test src/lib.rs
   - cargo doc --no-deps
