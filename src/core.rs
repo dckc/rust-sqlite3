@@ -79,7 +79,7 @@ impl SqliteConnection {
         match decode_result(r, "sqlite3_prepare_v2") {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
-                Ok((SqliteStatement::new(stmt), offset))
+                Ok((SqliteStatement { stmt: stmt }, offset))
             },
             Err(code) => Err(code)
         }
@@ -116,12 +116,6 @@ impl<'db> Drop for SqliteStatement<'db> {
 
 
 impl<'db> SqliteStatement<'db> {
-    // Only a SqliteCursor can call this constructor
-    #[allow(visible_private_types)]
-    pub fn new<'db>(stmt: *mut ffi::sqlite3_stmt) -> SqliteStatement<'db> {
-        SqliteStatement { stmt: stmt }
-    }
-
     pub fn query(&mut self) -> SqliteResult<SqliteRows> {
         {
             let r = unsafe { ffi::sqlite3_reset(self.stmt) };
