@@ -14,8 +14,13 @@ Share and enjoy. LICENSE: MIT.
 Basic API design issues worked out, but only a handful of features supported.
 
  - TODO: docs at rust-ci
- - TODO: build status: travis-ci
  - TODO: the other 95% of the relevant features
+
+<div>
+<a href="https://travis-ci.org/dckc/rust-sqlite3/builds">
+ <img alt="build status" src="https://travis-ci.org/dckc/rust-sqlite3.svg?branch=master"/>
+</a>
+</div>
 
 ## Motivation and Acknowledgements
 
