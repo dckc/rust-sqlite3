@@ -1,5 +1,5 @@
 use libc::c_int;
-use std::num::from_uint;
+use std::num::from_i32;
 use std::ptr;
 use std::c_str;
 
@@ -144,14 +144,14 @@ impl<'s> SqliteRows<'s> {
     /// so we need a lifetime constraint. The unfortunate result is that
     ///  `SqliteRows` cannot implement the `Iterator` trait.
     pub fn next<'r>(&'r mut self) -> Option<SqliteResult<SqliteRow<'s, 'r>>> {
-        let result = unsafe { ffi::sqlite3_step(self.statement.stmt) } as uint;
-        match from_uint::<SqliteStep>(result) {
+        let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
+        match from_i32::<SqliteStep>(result) {
             Some(SQLITE_ROW) => {
                 Some(Ok(SqliteRow{ rows: self }))
             },
             Some(SQLITE_DONE) => None,
             None => {
-                let err = from_uint::<SqliteError>(result);
+                let err = from_i32::<SqliteError>(result);
                 Some(Err(err.unwrap()))
             }
         }
@@ -203,7 +203,7 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
-        match from_uint::<SqliteError>(result as uint) {
+        match from_i32::<SqliteError>(result) {
             Some(code) => Err(code),
             None => fail!("{} returned unexpected {:d}", context, result)
         }
