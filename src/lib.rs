@@ -48,11 +48,14 @@ use std::fmt::Show;
 
 pub use core::{SqliteConnection, SqliteStatement, SqliteRows, SqliteRow};
 
-// Any code that requires unsafe {} blocks is in mod core.
-mod core;
+pub mod core;
 
+/// bindgen-bindings to libsqlite3
 #[allow(non_camel_case_types, dead_code)]
-mod ffi;
+pub mod ffi;
+
+pub mod access;
+
 
 impl<'s, 'r> core::SqliteRow<'s, 'r> {
     pub fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
@@ -88,6 +91,20 @@ trait FromSql {
 impl FromSql for i32 {
     fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
 }
+
+impl FromSql for int {
+    // TODO: get_int should take a uint, not an int, right?
+    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<int> { Ok(row.column_int(col) as int) }
+}
+
+/*@@@@
+impl FromSql for String {
+    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<String> {
+        Ok(row.column_text(col as int).to_string())
+    }
+}
+*/
+
 
 /// A trait implemented by types that can index into columns of a row.
 ///
@@ -170,17 +187,59 @@ enum SqliteLogLevel {
     SQLITE_WARNING   = 28,
 }
 
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-enum SqliteStep {
-    SQLITE_ROW       = 100,
-    SQLITE_DONE      = 101,
+
+pub enum SqliteStep<'s, 'r> {
+    Row(SqliteRow<'s, 'r>),
+    Done(Option<uint>),
+    Error(SqliteError)
 }
 
+#[deriving(Show, PartialEq)]
+pub enum BindArg {
+    Blob(Vec<u8>),
+    Float64(f64),
+    Integer(int),
+    Integer64(i64),
+    Null,
+    Text(String),
+    // TODO: value?
+    // TODO: zeroblob?
+}
+
+pub trait ToSql {
+    fn to_sql(&self) -> BindArg;
+}
+
+impl ToSql for int {
+    fn to_sql(&self) -> BindArg { Integer(*self) }
+}
+
+impl ToSql for i64 {
+    fn to_sql(&self) -> BindArg { Integer64(*self) }
+}
+
+impl ToSql for f64 {
+    fn to_sql(&self) -> BindArg { Float64(*self) }
+}
+
+impl ToSql for Option<int> {
+    fn to_sql(&self) -> BindArg {
+        match *self {
+            Some(i) => Integer(i),
+            None => Null
+        }
+    }
+}
+
+impl ToSql for String {
+    // TODO: eliminate copy?
+    fn to_sql(&self) -> BindArg { Text(self.clone()) }
+}
 
 #[cfg(test)]
 mod tests {
     use super::{SqliteConnection, SqliteResult, SqliteRows};
+    use super::Row;
 
     #[test]
     fn db_new_types() {
@@ -200,7 +259,7 @@ mod tests {
     fn with_query<T>(sql: &str, f: |rows: &mut SqliteRows| -> T) -> SqliteResult<T> {
         let mut db = try!(SqliteConnection::new());
         let mut s = try!(db.prepare(sql));
-        let mut rows = try!(s.query());
+        let mut rows = try!(s.query([]));
         Ok(f(&mut rows))
     }
 
@@ -214,8 +273,8 @@ mod tests {
                        union all
                        select 2", |rows| {
                 loop {
-                    match rows.next() {
-                        Some(Ok(ref mut row)) => {
+                    match rows.step() {
+                        Row(ref mut row) => {
                             count += 1;
                             sum += row.get(0u)
                         },
@@ -238,8 +297,8 @@ mod tests {
                        union all
                        select 2", |rows| {
                 loop {
-                    match rows.next() {
-                        Some(Ok(ref mut row)) => {
+                    match rows.step() {
+                        Row(ref mut row) => {
                             count += 1;
                             sum += row.get("col1")
                         },
@@ -250,5 +309,61 @@ mod tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
+    }
+}
+
+
+#[cfg(test)]
+mod bind_tests {
+    use super::SqliteConnection;
+    use super::{SqliteResult, Integer, Text};
+    use super::{Row, Done};
+
+    #[test]
+    fn bind_fun() {
+        fn go() -> SqliteResult<()> {
+            let mut database = try!(SqliteConnection::new());
+
+            try!(database.exec(
+                "BEGIN;
+                CREATE TABLE test (id int, name text, address text);
+                INSERT INTO test (id, name, address) VALUES (1, 'John Doe', '123 w Pine');
+                COMMIT;"));
+
+            {
+                let mut tx = try!(database.prepare(
+                    "INSERT INTO test (id, name, address) VALUES (?, ?, ?)"));
+                let mut rows = try!(tx.update([Integer(2),
+                                               Text("Jane Doe".to_string()),
+                                               Text("345 e Walnut".to_string())]));
+                assert_eq!(match rows.step() { Done(changed) => changed, _ => None },
+                           Some(1));
+            }
+
+            let mut q = try!(database.prepare("select * from test order by id"));
+            let mut rows = try!(q.query([]));
+            match rows.step() {
+                Row(ref mut row) => {
+                    assert_eq!(row.get::<uint, int>(0), 1);
+                    // TODO let name = q.get_text(1);
+                    // assert_eq!(name.as_slice(), "John Doe");
+                },
+                _ => fail!()
+            }
+
+            match rows.step() {
+                Row(ref mut row) => {
+                    assert_eq!(row.get::<uint, int>(0), 2);
+                    //TODO let addr = q.get_text(2);
+                    // assert_eq!(addr.as_slice(), "345 e Walnut");
+                },
+                _ => fail!()
+            }
+            Ok(())
+        }
+        match go() {
+            Ok(_) => (),
+            Err(e) => fail!("oops! {}", e)
+        }
     }
 }
