@@ -210,3 +210,6 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
     }
 }
 
+// Local Variables:
+// flycheck-rust-crate-root: "lib.rs"
+// End:
