@@ -5,7 +5,7 @@
 //! ```rust
 //! extern crate sqlite3;
 //!
-//! use sqlite3::{SqliteConnection};
+//! use sqlite3::{SqliteConnection, Row};
 //!
 //! struct Person {
 //!     id: i32,
@@ -15,10 +15,10 @@
 //!     let mut conn = SqliteConnection::new().unwrap();
 //!
 //!     let mut stmt = conn.prepare("SELECT 0, 'Steven'").unwrap();
-//!     let mut rows = stmt.query().unwrap();
+//!     let mut rows = stmt.query([]).unwrap();
 //!     loop {
-//!         match rows.next() {
-//!             Some(Ok(ref mut row)) => {
+//!         match rows.step() {
+//!             Row(ref mut row) => {
 //!                 let person = Person {
 //!                     id: row.get(0u)
 //!                 };
