@@ -12,13 +12,13 @@ use super::{Done, Row, Error};
 use ffi;
 
 /// A connection to a sqlite3 database.
-pub struct SqliteConnection {
+pub struct DatabaseConnection {
     // not pub so that nothing outside this module
     // interferes with the lifetime
     db: *mut ffi::sqlite3
 }
 
-impl Drop for SqliteConnection {
+impl Drop for DatabaseConnection {
     /// Release resources associated with connection.
     ///
     /// # Failure
@@ -42,27 +42,27 @@ impl Drop for SqliteConnection {
 
 pub type Access = proc(*mut *mut ffi::sqlite3) -> c_int;
 
-impl SqliteConnection {
+impl DatabaseConnection {
     // Create a new connection to an in-memory database.
     // TODO: explicit access to files
     // TODO: use support _v2 interface with flags
     // TODO: integrate sqlite3_errmsg()
-    pub fn new() -> SqliteResult<SqliteConnection> {
+    pub fn new() -> SqliteResult<DatabaseConnection> {
         fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
             let result = ":memory:".with_c_str({
                 |memory| unsafe { ffi::sqlite3_open(memory, db) }
             });
             result
         }
-        SqliteConnection::connect(in_memory)
+        DatabaseConnection::connect(in_memory)
     }
 
     #[allow(visible_private_types)]
-    pub fn connect(open: Access) -> SqliteResult<SqliteConnection> {
+    pub fn connect(open: Access) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::mut_null();
         let result = open(&mut db);
         match decode_result(result, "sqlite3_open") {
-            Ok(()) => Ok(SqliteConnection { db: db }),
+            Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
                 // "Whether or not an error occurs when it is opened,
                 // resources associated with the database connection
@@ -76,7 +76,7 @@ impl SqliteConnection {
 
     /// Prepare/compile an SQL statement.
     /// See http://www.sqlite.org/c3ref/prepare.html
-    pub fn prepare<'db>(&'db mut self, sql: &str) -> SqliteResult<SqliteStatement<'db>> {
+    pub fn prepare<'db>(&'db mut self, sql: &str) -> SqliteResult<PreparedStatement<'db>> {
         match self.prepare_with_offset(sql) {
             Ok((cur, _)) => Ok(cur),
             Err(e) => Err(e)
@@ -84,7 +84,7 @@ impl SqliteConnection {
     }
                 
     pub fn prepare_with_offset<'db>(&'db mut self, sql: &str)
-                                    -> SqliteResult<(SqliteStatement<'db>, uint)> {
+                                    -> SqliteResult<(PreparedStatement<'db>, uint)> {
         let mut stmt = ptr::mut_null();
         let mut tail = ptr::null();
         let z_sql = sql.as_ptr() as *const ::libc::c_char;
@@ -93,7 +93,7 @@ impl SqliteConnection {
         match decode_result(r, "sqlite3_prepare_v2") {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
-                Ok((SqliteStatement { stmt: stmt, conn: self }, offset))
+                Ok((PreparedStatement { stmt: stmt, conn: self }, offset))
             },
             Err(code) => Err(code)
         }
@@ -116,13 +116,13 @@ impl SqliteConnection {
 
 
 /// A prepared statement.
-pub struct SqliteStatement<'db> {
-    conn: &'db mut SqliteConnection,
+pub struct PreparedStatement<'db> {
+    conn: &'db mut DatabaseConnection,
     stmt: *mut ffi::sqlite3_stmt
 }
 
 #[unsafe_destructor]
-impl<'db> Drop for SqliteStatement<'db> {
+impl<'db> Drop for PreparedStatement<'db> {
     fn drop(&mut self) {
         unsafe {
 
@@ -143,19 +143,19 @@ impl<'db> Drop for SqliteStatement<'db> {
 }
 
 
-impl<'db> SqliteStatement<'db> {
+impl<'db> PreparedStatement<'db> {
     pub fn query(&'db mut self, values: &[BindArg])
-                 -> SqliteResult<SqliteRows<'db>> {
+                 -> SqliteResult<ResultSet<'db>> {
         self.execute(false, values)
     }
 
     pub fn update(&'db mut self, values: &[BindArg])
-                  -> SqliteResult<SqliteRows<'db>> {
+                  -> SqliteResult<ResultSet<'db>> {
         self.execute(true, values)
     }
 
     pub fn execute(&'db mut self, update: bool, values: &[BindArg])
-                   -> SqliteResult<SqliteRows<'db>> {
+                   -> SqliteResult<ResultSet<'db>> {
         {
             let r = unsafe { ffi::sqlite3_reset(self.stmt) };
             try!(decode_result(r, "sqlite3_reset"));
@@ -171,7 +171,7 @@ impl<'db> SqliteStatement<'db> {
             try!(self.bind(i + 1, v))
         }
 
-        Ok(SqliteRows { statement: self, is_update: update })
+        Ok(ResultSet { statement: self, is_update: update })
     }
 
     ///
@@ -216,8 +216,8 @@ impl<'db> SqliteStatement<'db> {
 
 
 /// Results of executing a `prepare()`d statement.
-pub struct SqliteRows<'s> {
-    statement: &'s mut SqliteStatement<'s>,
+pub struct ResultSet<'s> {
+    statement: &'s mut PreparedStatement<'s>,
     is_update: bool
 }
 
@@ -229,17 +229,17 @@ enum Step {
 }
 
 
-impl<'s> SqliteRows<'s> {
+impl<'s> ResultSet<'s> {
     /// Iterate over rows resulting from execution of a prepared statement.
     ///
     /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
     /// so we need a lifetime constraint. The unfortunate result is that
-    ///  `SqliteRows` cannot implement the `Iterator` trait.
+    ///  `ResultSet` cannot implement the `Iterator` trait.
     pub fn step<'r>(&'r mut self) -> SqliteStep<'s, 'r> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match from_i32::<Step>(result) {
             Some(SQLITE_ROW) => {
-                Row(SqliteRow{ rows: self })
+                Row(ResultRow{ rows: self })
             },
             Some(SQLITE_DONE) => Done({
                 match self.is_update {
@@ -261,11 +261,11 @@ impl<'s> SqliteRows<'s> {
 
 
 /// Access to columns of a row.
-pub struct SqliteRow<'s, 'r> {
-    rows: &'r mut SqliteRows<'s>
+pub struct ResultRow<'s, 'r> {
+    rows: &'r mut ResultSet<'s>
 }
 
-impl<'s, 'r> SqliteRow<'s, 'r> {
+impl<'s, 'r> ResultRow<'s, 'r> {
 
     // TODO: consider returning Option<uint>
     // "This routine returns 0 if pStmt is an SQL statement that does

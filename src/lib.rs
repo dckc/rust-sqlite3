@@ -5,14 +5,14 @@
 //! ```rust
 //! extern crate sqlite3;
 //!
-//! use sqlite3::{SqliteConnection, Row};
+//! use sqlite3::{DatabaseConnection, Row};
 //!
 //! struct Person {
 //!     id: i32,
 //! }
 //!
 //! fn main() {
-//!     let mut conn = SqliteConnection::new().unwrap();
+//!     let mut conn = DatabaseConnection::new().unwrap();
 //!
 //!     let mut stmt = conn.prepare("SELECT 0, 'Steven'").unwrap();
 //!     let mut rows = stmt.query([]).unwrap();
@@ -46,7 +46,7 @@ extern crate libc;
 
 use std::fmt::Show;
 
-pub use core::{SqliteConnection, SqliteStatement, SqliteRows, SqliteRow};
+pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 
 pub mod core;
 
@@ -57,7 +57,7 @@ pub mod ffi;
 pub mod access;
 
 
-impl<'s, 'r> core::SqliteRow<'s, 'r> {
+impl<'s, 'r> core::ResultRow<'s, 'r> {
     pub fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
@@ -85,21 +85,21 @@ impl<'s, 'r> core::SqliteRow<'s, 'r> {
 ///   - TODO: consider a `types` submodule
 ///   - TODO: many more implementors, including Option<T>
 trait FromSql {
-    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<Self>;
+    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<Self>;
 }
 
 impl FromSql for i32 {
-    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
+    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
 }
 
 impl FromSql for int {
     // TODO: get_int should take a uint, not an int, right?
-    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<int> { Ok(row.column_int(col) as int) }
+    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<int> { Ok(row.column_int(col) as int) }
 }
 
 /*@@@@
 impl FromSql for String {
-    fn from_sql(row: &SqliteRow, col: uint) -> SqliteResult<String> {
+    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<String> {
         Ok(row.column_text(col as int).to_string())
     }
 }
@@ -111,15 +111,15 @@ impl FromSql for String {
 /// *inspired by sfackler's [RowIndex][]*
 /// [RowIndex]: http://www.rust-ci.org/sfackler/rust-postgres/doc/postgres/trait.RowIndex.html
 pub trait RowIndex {
-    fn idx(&self, row: &mut SqliteRow) -> Option<uint>;
+    fn idx(&self, row: &mut ResultRow) -> Option<uint>;
 }
 
 impl RowIndex for uint {
-    fn idx(&self, _row: &mut SqliteRow) -> Option<uint> { Some(*self) }
+    fn idx(&self, _row: &mut ResultRow) -> Option<uint> { Some(*self) }
 }
 
 impl RowIndex for &'static str {
-    fn idx(&self, row: &mut SqliteRow) -> Option<uint> {
+    fn idx(&self, row: &mut ResultRow) -> Option<uint> {
         let mut ixs = range(0, row.column_count());
         ixs.find(|ix| row.with_column_name(*ix, false, |name| name == *self))
     }
@@ -145,7 +145,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// Note `SQLITE_OK` is not included; we use `Ok(...)` instead.
 ///
 /// Likewise, in place of `SQLITE_ROW` and `SQLITE_DONE`, we return
-/// `Some(...)` or `None` from `SqliteRows::next()`.
+/// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -189,7 +189,7 @@ enum SqliteLogLevel {
 
 
 pub enum SqliteStep<'s, 'r> {
-    Row(SqliteRow<'s, 'r>),
+    Row(ResultRow<'s, 'r>),
     Done(Option<uint>),
     Error(SqliteError)
 }
@@ -238,26 +238,26 @@ impl ToSql for String {
 
 #[cfg(test)]
 mod tests {
-    use super::{SqliteConnection, SqliteResult, SqliteRows};
+    use super::{DatabaseConnection, SqliteResult, ResultSet};
     use super::Row;
 
     #[test]
     fn db_new_types() {
-        SqliteConnection::new().unwrap();
+        DatabaseConnection::new().unwrap();
     }
 
     #[test]
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(SqliteConnection::new());
+            let mut db = try!(DatabaseConnection::new());
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
     }
 
 
-    fn with_query<T>(sql: &str, f: |rows: &mut SqliteRows| -> T) -> SqliteResult<T> {
-        let mut db = try!(SqliteConnection::new());
+    fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
+        let mut db = try!(DatabaseConnection::new());
         let mut s = try!(db.prepare(sql));
         let mut rows = try!(s.query([]));
         Ok(f(&mut rows))
@@ -315,14 +315,14 @@ mod tests {
 
 #[cfg(test)]
 mod bind_tests {
-    use super::SqliteConnection;
+    use super::DatabaseConnection;
     use super::{SqliteResult, Integer, Text};
     use super::{Row, Done};
 
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(SqliteConnection::new());
+            let mut database = try!(DatabaseConnection::new());
 
             try!(database.exec(
                 "BEGIN;

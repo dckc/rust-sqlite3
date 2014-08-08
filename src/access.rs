@@ -25,11 +25,11 @@ pub fn filename_access(filename: String) -> Access {
 #[cfg(test)]
 mod tests {
     use super::filename_access;
-    use core::SqliteConnection;
+    use core::DatabaseConnection;
 
     #[test]
     fn open_file_db() {
-        SqliteConnection::connect(filename_access("/tmp/db1".to_string())).unwrap();
+        DatabaseConnection::connect(filename_access("/tmp/db1".to_string())).unwrap();
     }
 }
 
