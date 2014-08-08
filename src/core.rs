@@ -12,7 +12,7 @@ use std::mem;
 use std::c_str;
 
 use super::{SQLITE_OK, SqliteError, SqliteStep, SqliteResult};
-use super::{BindArg, Text, Blob, Integer, Integer64, Float64, Null};
+use super::{ParameterValue, Text, Blob, Integer, Integer64, Float64, Null};
 use super::{Done, Row, Error};
 
 use ffi;
@@ -161,17 +161,17 @@ impl<'db> Drop for PreparedStatement<'db> {
 
 
 impl<'db> PreparedStatement<'db> {
-    pub fn query(&'db mut self, values: &[BindArg])
+    pub fn query(&'db mut self, values: &[ParameterValue])
                  -> SqliteResult<ResultSet<'db>> {
         self.execute(false, values)
     }
 
-    pub fn update(&'db mut self, values: &[BindArg])
+    pub fn update(&'db mut self, values: &[ParameterValue])
                   -> SqliteResult<ResultSet<'db>> {
         self.execute(true, values)
     }
 
-    pub fn execute(&'db mut self, update: bool, values: &[BindArg])
+    pub fn execute(&'db mut self, update: bool, values: &[ParameterValue])
                    -> SqliteResult<ResultSet<'db>> {
         {
             let r = unsafe { ffi::sqlite3_reset(self.stmt) };
@@ -193,7 +193,7 @@ impl<'db> PreparedStatement<'db> {
 
     ///
     /// See http://www.sqlite.org/c3ref/bind_blob.html
-    pub fn bind(&mut self, i: uint, value: &BindArg) -> SqliteResult<()> {
+    pub fn bind(&mut self, i: uint, value: &ParameterValue) -> SqliteResult<()> {
         //debug!("`Cursor.bind_param(stmt={:?}, i={:?}, value={})`", self.stmt, i, value);
 
         // the SQL parameter index (starting from 1)

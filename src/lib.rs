@@ -194,36 +194,42 @@ pub enum SqliteStep<'s, 'r> {
     Error(SqliteError)
 }
 
+/// A value for binding to a parameter in a `PreparedStatement`
+///
+/// cf. [Parameters][]
+/// [Parameters]: http://www.sqlite.org/lang_expr.html#varparam
+///
+///  - *TODO: value?*
+///  - *TODO: zeroblob?*
+#[unstable]
 #[deriving(Show, PartialEq)]
-pub enum BindArg {
+pub enum ParameterValue {
     Blob(Vec<u8>),
     Float64(f64),
     Integer(int),
     Integer64(i64),
     Null,
     Text(String),
-    // TODO: value?
-    // TODO: zeroblob?
 }
 
 pub trait ToSql {
-    fn to_sql(&self) -> BindArg;
+    fn to_sql(&self) -> ParameterValue;
 }
 
 impl ToSql for int {
-    fn to_sql(&self) -> BindArg { Integer(*self) }
+    fn to_sql(&self) -> ParameterValue { Integer(*self) }
 }
 
 impl ToSql for i64 {
-    fn to_sql(&self) -> BindArg { Integer64(*self) }
+    fn to_sql(&self) -> ParameterValue { Integer64(*self) }
 }
 
 impl ToSql for f64 {
-    fn to_sql(&self) -> BindArg { Float64(*self) }
+    fn to_sql(&self) -> ParameterValue { Float64(*self) }
 }
 
 impl ToSql for Option<int> {
-    fn to_sql(&self) -> BindArg {
+    fn to_sql(&self) -> ParameterValue {
         match *self {
             Some(i) => Integer(i),
             None => Null
@@ -233,7 +239,7 @@ impl ToSql for Option<int> {
 
 impl ToSql for String {
     // TODO: eliminate copy?
-    fn to_sql(&self) -> BindArg { Text(self.clone()) }
+    fn to_sql(&self) -> ParameterValue { Text(self.clone()) }
 }
 
 #[cfg(test)]
