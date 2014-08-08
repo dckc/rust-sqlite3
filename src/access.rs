@@ -5,14 +5,34 @@
 //!
 //! This module provides the privileged functions to create such authorities.
 //!
-//! TODO: move `mod access` to its own crate so that linking to `sqlite3` doesn't
-//! bring in this ambient authority..
+//! *TODO: move `mod access` to its own crate so that linking to `sqlite3` doesn't
+//! bring in this ambient authority.*
+#![unstable]
 
 use libc::c_int;
 
+use super::SqliteResult;
+use core::{Access, DatabaseConnection};
 use ffi;
-use core::Access;
 
+/// Open a database by filename.
+///
+/// Refer to [Opening A New Database][open] regarding URI filenames.
+///
+/// [open]: http://www.sqlite.org/c3ref/open.html
+#[stable]
+pub fn open(filename: String) -> SqliteResult<DatabaseConnection> {
+    DatabaseConnection::connect(filename_access(filename))
+}
+
+/// Create authorization to open a file as a database.
+///
+/// *The resulting proc() allocates an `sqlite3` structure
+/// that is intended to be passed to `DatabaseConnection::connect`.
+/// Failure to do would result in a memory leak.*
+///
+/// *TODO: mark this unsafe?*
+#[unstable]
 pub fn filename_access(filename: String) -> Access {
     proc(db: *mut *mut ffi::sqlite3) -> c_int {
         filename.with_c_str({
@@ -20,6 +40,7 @@ pub fn filename_access(filename: String) -> Access {
         })
     }
 }
+
 
 
 #[cfg(test)]

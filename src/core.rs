@@ -1,4 +1,10 @@
-//! The core module provides a safe interface to the (unsafe) ffi layer.
+//! A minimal safe interface to sqlite3's basic API.
+//!
+//! The basic sqlite3 API is discussed in the [sqlite intro][intro].
+//! To go beyond that, use the (unsafe) `ffi` module directly.
+//!
+//! [intro]: http://www.sqlite.org/cintro.html
+
 use libc::{c_int};
 use std::num::from_i32;
 use std::ptr;
@@ -40,13 +46,16 @@ impl Drop for DatabaseConnection {
 }
 
 
+/// Authorization to connect to database.
+///
+/// *TODO: mark this unsafe?*
 pub type Access = proc(*mut *mut ffi::sqlite3) -> c_int;
 
 impl DatabaseConnection {
-    // Create a new connection to an in-memory database.
-    // TODO: explicit access to files
-    // TODO: use support _v2 interface with flags
-    // TODO: integrate sqlite3_errmsg()
+    /// Create connection to an in-memory database.
+    ///
+    ///  - TODO: use support _v2 interface with flags
+    ///  - TODO: integrate sqlite3_errmsg()
     pub fn new() -> SqliteResult<DatabaseConnection> {
         fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
             let result = ":memory:".with_c_str({
@@ -57,6 +66,9 @@ impl DatabaseConnection {
         DatabaseConnection::connect(in_memory)
     }
 
+    /// Given explicit access to a database, attempt to connect to it.
+    ///
+    /// *TODO: mark this unsafe?*
     #[allow(visible_private_types)]
     pub fn connect(open: Access) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::mut_null();
@@ -75,7 +87,6 @@ impl DatabaseConnection {
     }
 
     /// Prepare/compile an SQL statement.
-    /// See http://www.sqlite.org/c3ref/prepare.html
     pub fn prepare<'db>(&'db mut self, sql: &str) -> SqliteResult<PreparedStatement<'db>> {
         match self.prepare_with_offset(sql) {
             Ok((cur, _)) => Ok(cur),
@@ -111,6 +122,12 @@ impl DatabaseConnection {
             |c_sql| unsafe { ffi::sqlite3_exec(self.db, c_sql, None,
                                                ptr::mut_null(), ptr::mut_null()) });
         decode_result(result, "sqlite3_exec")
+    }
+
+    /// Expose the underlying `sqlite3` struct pointer for use
+    /// with the `ffi` module.
+    pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3 {
+        self.db
     }
 }
 
@@ -212,6 +229,11 @@ impl<'db> PreparedStatement<'db> {
         decode_result(r, "sqlite3_bind_...")
     }
 
+    /// Expose the underlying `sqlite3_stmt` struct pointer for use
+    /// with the `ffi` module.
+    pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3_stmt {
+        self.stmt
+    }
 }
 
 
