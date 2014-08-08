@@ -161,28 +161,6 @@ impl<'db> Drop for PreparedStatement<'db> {
 
 
 impl<'db> PreparedStatement<'db> {
-    /// Execute a query after binding any parameters.
-    ///
-    /// No [number of rows modified][changes] is reported when the
-    /// statement is done. (See `ResultSet::step()`.)
-    ///
-    /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn query(&'db mut self, values: &[ParameterValue])
-                 -> SqliteResult<ResultSet<'db>> {
-        self.execute(false, values)
-    }
-
-    /// Execute a statement after binding any parameters.
-    ///
-    /// When the statement is done, The [number of rows
-    /// modified][changes] is reported. (See `ResultSet::step()`.)
-    ///
-    /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn update(&'db mut self, values: &[ParameterValue])
-                  -> SqliteResult<ResultSet<'db>> {
-        self.execute(true, values)
-    }
-
     /// Execute a statement after binding any parameters.
     ///
     /// The `want_changes` argument determines whether the [number
@@ -192,7 +170,9 @@ impl<'db> PreparedStatement<'db> {
     /// *TODO: support binding by name as well as by position?*
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn execute(&'db mut self, want_changes: bool, values: &[ParameterValue])
+    pub fn execute(&'db mut self, want_changes: bool,
+                   // TODO: figure out why &[ParameterValue] doesn't work.
+                   values: Vec<ParameterValue>)
                    -> SqliteResult<ResultSet<'db>> {
         {
             let r = unsafe { ffi::sqlite3_reset(self.stmt) };
@@ -342,6 +322,24 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         let i_col = col as c_int;
         unsafe { ffi::sqlite3_column_int(stmt, i_col) }
     }
+
+    pub fn column_text(&self, col: uint) -> Option<String> {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        match unsafe {
+            let s = ffi::sqlite3_column_text(stmt, i_col);
+            if s == ptr::null() { None }
+            else { Some(c_str::CString::new(mem::transmute(s), true)) }
+        } {
+            Some(c_str) => match c_str.as_str() {
+                Some(str) => Some(str.to_string()),
+                None => None
+            },
+            None => None
+        }
+    }
+
+
 }
 
 

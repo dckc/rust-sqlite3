@@ -4,56 +4,110 @@
 //!
 //! ```rust
 //! extern crate sqlite3;
+//! extern crate time;
 //!
-//! use sqlite3::{DatabaseConnection, Row};
+//! use time::Timespec;
 //!
+//! use sqlite3::{DatabaseConnection, Row, SqliteResult};
+//!
+//! #[deriving(Show)]
 //! struct Person {
 //!     id: i32,
+//!     name: String,
+//!     time_created: Timespec,
+//!     // TODO: data: Option<Vec<u8>>
 //! }
 //!
-//! fn main() {
-//!     let mut conn = DatabaseConnection::new().unwrap();
+//! fn io() -> SqliteResult<()> {
+//!     let mut conn = try!(DatabaseConnection::new());
 //!
-//!     let mut stmt = conn.prepare("SELECT 0, 'Steven'").unwrap();
-//!     let mut rows = stmt.query([]).unwrap();
+//!     try!(conn.exec("CREATE TABLE person (
+//!                  id              SERIAL PRIMARY KEY,
+//!                  name            VARCHAR NOT NULL,
+//!                  time_created    TIMESTAMP NOT NULL
+//!                )"));
+//!
+//!     let me = Person {
+//!         id: 0,
+//!         name: "Dan".to_string(),
+//!         time_created: time::get_time(),
+//!     };
+//!     try!(try!(conn.prepare("INSERT INTO person (name, time_created)
+//!                   VALUES ($1, $2)")).update(
+//!               [&me.name, &me.time_created]));
+//!
+//!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
+//!     let mut rows = try!(stmt.query([]));
 //!     loop {
 //!         match rows.step() {
 //!             Row(ref mut row) => {
 //!                 let person = Person {
-//!                     id: row.get(0u)
+//!                     id: row.get(0u),
+//!                     name: row.get(1u),
+//!                     time_created: row.get(2u)
 //!                 };
-//!                 println!("Found person {}", person.id);
+//!                 println!("Found person {}", person);
 //!             },
 //!             _ => break
 //!         }
 //!     }
+//!     Ok(())
+//! }
+//!
+//! fn main() {
+//!   io().unwrap();
 //! }
 //! ```
-//!
-//! *This example, inspired by sfackler's example in rust-postgres, is lacking
-//! some basic pieces:*
-//!
-//!  - TODO: FromSql for String
-//!  - TODO: bindings, including Timespec, Vec<u8>
-//!  - TODO: conn.execute
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 #![feature(unsafe_destructor)]
 
 extern crate libc;
+extern crate time;
 
 use std::fmt::Show;
 
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
+pub use types::{FromSql, ToSql};
 
 pub mod core;
+pub mod types;
 
 /// bindgen-bindings to libsqlite3
 #[allow(non_camel_case_types, dead_code)]
 pub mod ffi;
 
 pub mod access;
+
+
+impl<'db> core::PreparedStatement<'db> {
+    /// Execute a query after binding any parameters.
+    ///
+    /// No [number of rows modified][changes] is reported when the
+    /// statement is done. (See `ResultSet::step()`.)
+    ///
+    /// [changes]: http://www.sqlite.org/c3ref/changes.html
+    pub fn query(&'db mut self, values: &[&ToSql])
+                 -> SqliteResult<ResultSet<'db>> {
+        self.execute(false, convert(values))
+    }
+
+    /// Execute a statement after binding any parameters.
+    ///
+    /// When the statement is done, The [number of rows
+    /// modified][changes] is reported. (See `ResultSet::step()`.)
+    ///
+    /// [changes]: http://www.sqlite.org/c3ref/changes.html
+    pub fn update(&'db mut self, values: &[&ToSql])
+                  -> SqliteResult<ResultSet<'db>> {
+        self.execute(true, convert(values))
+    }
+}
+
+fn convert<'a>(values: &'a[&ToSql]) -> Vec<ParameterValue> {
+    values.iter().map(|v| v.to_sql()).collect()
+}
 
 
 impl<'s, 'r> core::ResultRow<'s, 'r> {
@@ -72,38 +126,6 @@ impl<'s, 'r> core::ResultRow<'s, 'r> {
     }
 
 }
-
-/// A trait for result values from a query.
-///
-/// cf [sqlite3 result values][column].
-///
-/// *inspired by sfackler's FromSql (and some haskell bindings?)*
-///
-/// [column]: http://www.sqlite.org/c3ref/column_blob.html
-///
-///   - TODO: consider a `types` submodule
-///   - TODO: many more implementors, including Option<T>
-trait FromSql {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<Self>;
-}
-
-impl FromSql for i32 {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
-}
-
-impl FromSql for int {
-    // TODO: get_int should take a uint, not an int, right?
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<int> { Ok(row.column_int(col) as int) }
-}
-
-/*@@@@
-impl FromSql for String {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<String> {
-        Ok(row.column_text(col as int).to_string())
-    }
-}
-*/
-
 
 /// A trait implemented by types that can index into columns of a row.
 ///
@@ -196,6 +218,7 @@ pub enum StepOutcome<'s, 'r> {
     Error(SqliteError)
 }
 
+
 /// A value for binding to a parameter in a `PreparedStatement`
 ///
 /// cf. [Parameters][]
@@ -212,36 +235,6 @@ pub enum ParameterValue {
     Integer64(i64),
     Null,
     Text(String),
-}
-
-pub trait ToSql {
-    fn to_sql(&self) -> ParameterValue;
-}
-
-impl ToSql for int {
-    fn to_sql(&self) -> ParameterValue { Integer(*self) }
-}
-
-impl ToSql for i64 {
-    fn to_sql(&self) -> ParameterValue { Integer64(*self) }
-}
-
-impl ToSql for f64 {
-    fn to_sql(&self) -> ParameterValue { Float64(*self) }
-}
-
-impl ToSql for Option<int> {
-    fn to_sql(&self) -> ParameterValue {
-        match *self {
-            Some(i) => Integer(i),
-            None => Null
-        }
-    }
-}
-
-impl ToSql for String {
-    // TODO: eliminate copy?
-    fn to_sql(&self) -> ParameterValue { Text(self.clone()) }
 }
 
 #[cfg(test)]
@@ -341,9 +334,10 @@ mod bind_tests {
             {
                 let mut tx = try!(database.prepare(
                     "INSERT INTO test (id, name, address) VALUES (?, ?, ?)"));
-                let mut rows = try!(tx.update([Integer(2),
-                                               Text("Jane Doe".to_string()),
-                                               Text("345 e Walnut".to_string())]));
+                let mut rows = try!(tx.execute(true,
+                                               vec!(Integer(2),
+                                                    Text("Jane Doe".to_string()),
+                                                    Text("345 e Walnut".to_string()))));
                 assert_eq!(match rows.step() { Done(changed) => changed, _ => None },
                            Some(1));
             }
