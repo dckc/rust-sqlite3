@@ -11,7 +11,7 @@ use std::ptr;
 use std::mem;
 use std::c_str;
 
-use super::{SQLITE_OK, SqliteError, SqliteStep, SqliteResult};
+use super::{SQLITE_OK, SqliteError, StepOutcome, SqliteResult};
 use super::{ParameterValue, Text, Blob, Integer, Integer64, Float64, Null};
 use super::{Done, Row, Error};
 
@@ -161,17 +161,38 @@ impl<'db> Drop for PreparedStatement<'db> {
 
 
 impl<'db> PreparedStatement<'db> {
+    /// Execute a query after binding any parameters.
+    ///
+    /// No [number of rows modified][changes] is reported when the
+    /// statement is done. (See `ResultSet::step()`.)
+    ///
+    /// [changes]: http://www.sqlite.org/c3ref/changes.html
     pub fn query(&'db mut self, values: &[ParameterValue])
                  -> SqliteResult<ResultSet<'db>> {
         self.execute(false, values)
     }
 
+    /// Execute a statement after binding any parameters.
+    ///
+    /// When the statement is done, The [number of rows
+    /// modified][changes] is reported. (See `ResultSet::step()`.)
+    ///
+    /// [changes]: http://www.sqlite.org/c3ref/changes.html
     pub fn update(&'db mut self, values: &[ParameterValue])
                   -> SqliteResult<ResultSet<'db>> {
         self.execute(true, values)
     }
 
-    pub fn execute(&'db mut self, update: bool, values: &[ParameterValue])
+    /// Execute a statement after binding any parameters.
+    ///
+    /// The `want_changes` argument determines whether the [number
+    /// of rows modified][changes] is reported when the statement is done.
+    /// (See `ResultSet::step()`.)
+    ///
+    /// *TODO: support binding by name as well as by position?*
+    ///
+    /// [changes]: http://www.sqlite.org/c3ref/changes.html
+    pub fn execute(&'db mut self, want_changes: bool, values: &[ParameterValue])
                    -> SqliteResult<ResultSet<'db>> {
         {
             let r = unsafe { ffi::sqlite3_reset(self.stmt) };
@@ -188,15 +209,19 @@ impl<'db> PreparedStatement<'db> {
             try!(self.bind(i + 1, v))
         }
 
-        Ok(ResultSet { statement: self, is_update: update })
+        Ok(ResultSet { statement: self, want_changes: want_changes })
     }
 
+    /// Bind a value to a statement parameter.
     ///
-    /// See http://www.sqlite.org/c3ref/bind_blob.html
+    /// **Note:** "The leftmost SQL parameter has an index of 1."[1]
+    ///
+    /// *TODO: support binding without copying strings, blobs*
+    ///
+    /// [1]: http://www.sqlite.org/c3ref/bind_blob.html
     pub fn bind(&mut self, i: uint, value: &ParameterValue) -> SqliteResult<()> {
         //debug!("`Cursor.bind_param(stmt={:?}, i={:?}, value={})`", self.stmt, i, value);
 
-        // the SQL parameter index (starting from 1)
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
         let transient = unsafe { mem::transmute(-1i) };
@@ -207,7 +232,6 @@ impl<'db> PreparedStatement<'db> {
             Integer64(ref v) => { unsafe { ffi::sqlite3_bind_int64(self.stmt, ix, *v) } },
             Float64(ref v) => { unsafe { ffi::sqlite3_bind_double(self.stmt, ix, *v) } },
 
-            // TODO: an interface that doesn't copy the string?
             Text(ref v) => {
                 let len = v.len() as c_int;
                 //debug!("  `Text`: v={:?}, l={:?}", v, l);
@@ -240,7 +264,7 @@ impl<'db> PreparedStatement<'db> {
 /// Results of executing a `prepare()`d statement.
 pub struct ResultSet<'s> {
     statement: &'s mut PreparedStatement<'s>,
-    is_update: bool
+    want_changes: bool
 }
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -257,14 +281,14 @@ impl<'s> ResultSet<'s> {
     /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
     /// so we need a lifetime constraint. The unfortunate result is that
     ///  `ResultSet` cannot implement the `Iterator` trait.
-    pub fn step<'r>(&'r mut self) -> SqliteStep<'s, 'r> {
+    pub fn step<'r>(&'r mut self) -> StepOutcome<'s, 'r> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match from_i32::<Step>(result) {
             Some(SQLITE_ROW) => {
                 Row(ResultRow{ rows: self })
             },
             Some(SQLITE_DONE) => Done({
-                match self.is_update {
+                match self.want_changes {
                     true => {
                         let db = self.statement.conn.db;
                         let count = unsafe { ffi::sqlite3_changes(db) };

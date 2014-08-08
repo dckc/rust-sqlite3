@@ -187,10 +187,13 @@ enum SqliteLogLevel {
     SQLITE_WARNING   = 28,
 }
 
-
-pub enum SqliteStep<'s, 'r> {
+/// Outcome of evaluating one step of a statement.
+pub enum StepOutcome<'s, 'r> {
+    /// Step yielded a row.
     Row(ResultRow<'s, 'r>),
+    /// Statement is done; changes are reported if requested.
     Done(Option<uint>),
+    /// Error outcome.
     Error(SqliteError)
 }
 
