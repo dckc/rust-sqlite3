@@ -11,10 +11,26 @@ use std::ptr;
 use std::mem;
 use std::c_str;
 
-use super::{SQLITE_OK, SqliteError, StepOutcome, SqliteResult};
-use super::{Done, Row, Error};
+pub use super::{SqliteError, StepOutcome, SqliteResult, ColumnType, SQLITE_NULL};
+pub use super::{Done, Row, Error};
 
 use ffi;
+
+// ref http://www.sqlite.org/c3ref/c_abort.html
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+pub enum SqliteOk {
+    SQLITE_OK = 0
+}
+
+
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+// TODO: use, test this
+enum SqliteLogLevel {
+    SQLITE_NOTICE    = 27,
+    SQLITE_WARNING   = 28,
+}
 
 /// A connection to a sqlite3 database.
 pub struct DatabaseConnection {
@@ -333,6 +349,19 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         }
     }
 
+    /// **Note:** "The value returned by sqlite3_column_type() is only
+    /// meaningful if no type conversions have occurred as described
+    /// below. After a type conversion, the value returned by
+    /// sqlite3_column_type() is undefined."[1]
+    /// [1]: http://www.sqlite.org/c3ref/column_blob.html
+    pub fn column_type(&self, col: uint) -> ColumnType {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        let result = unsafe { ffi::sqlite3_column_type(stmt, i_col) };
+        // fail on out-of-range result instead?
+        from_i32::<ColumnType>(result).unwrap_or(SQLITE_NULL)
+    }
+
     pub fn column_int(&self, col: uint) -> i32 {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
@@ -360,7 +389,7 @@ impl<'s, 'r> ResultRow<'s, 'r> {
             else { Some(c_str::CString::new(mem::transmute(s), false)) }
         } {
             Some(c_str) => match c_str.as_str() {
-                Some(str) => Some(str.to_string()),
+                Some(txt) => Some(txt.to_string()),
                 None => None
             },
             None => None
@@ -378,6 +407,60 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
         // .unwrap_or(SQLITE_ERROR)?
         Err(from_i32::<SqliteError>(result).expect(context))
     }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::{DatabaseConnection, SqliteResult, ResultSet};
+    use super::Row;
+
+    #[test]
+    fn db_new_types() {
+        DatabaseConnection::new().unwrap();
+    }
+
+    #[test]
+    fn stmt_new_types() {
+        fn go() -> SqliteResult<()> {
+            let mut db = try!(DatabaseConnection::new());
+            db.prepare("select 1 + 1").map( |_s| () )
+        }
+        go().unwrap();
+    }
+
+
+    fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
+        let mut db = try!(DatabaseConnection::new());
+        let mut s = try!(db.prepare(sql));
+        let mut rows = try!(s.query([]));
+        Ok(f(&mut rows))
+    }
+
+    #[test]
+    fn query_two_rows() {
+        fn go() -> SqliteResult<(uint, i32)> {
+            let mut count = 0;
+            let mut sum = 0;
+
+            with_query("select 1
+                       union all
+                       select 2", |rows| {
+                loop {
+                    match rows.step() {
+                        Row(ref mut row) => {
+                            count += 1;
+                            sum += row.get(0u)
+                        },
+                        _ => break
+                    }
+                }
+                (count, sum)
+            })
+        }
+        assert_eq!(go(), Ok((2, 3)))
+    }
+
 }
 
 // Local Variables:

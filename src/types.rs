@@ -2,6 +2,7 @@
 
 use super::{PreparedStatement, ResultRow};
 use super::{SqliteResult, SQLITE_MISMATCH};
+use super::{SQLITE_NULL};
 use time;
 
 pub trait ToSql {
@@ -61,6 +62,15 @@ impl<T: ToSql + Clone> ToSql for Option<T> {
     }
 }
 
+impl<T: FromSql + Clone> FromSql for Option<T> {
+    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<Option<T>> {
+        match row.column_type(col) {
+            SQLITE_NULL => Ok(None),
+            _ => FromSql::from_sql(row, col).map(|x| Some(x))
+        }
+    }
+}
+
 impl ToSql for String {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
         s.bind_text(ix, (*self).as_slice())
@@ -74,14 +84,19 @@ impl FromSql for String {
     }
 }
 
+/// Format of sqlite date strings
+///
+/// From [Date And Time Functions][lang_datefunc]:
+/// > The datetime() function returns "YYYY-MM-DD HH:MM:SS"
+/// [lang_datefunc]: http://www.sqlite.org/lang_datefunc.html
+pub static time_fmt: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     /// TODO: propagate error message
     fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<time::Tm> {
-        let isofmt = "%F";  // YYYY-MM-DD
         match row.column_text(col) {
             None => Err(SQLITE_MISMATCH),
-            Some(txt) => match time::strptime(txt.as_slice(), isofmt) {
+            Some(txt) => match time::strptime(txt.as_slice(), time_fmt) {
                 Ok(tm) => Ok(tm),
                 Err(msg) => Err(SQLITE_MISMATCH)
             }
@@ -92,7 +107,7 @@ impl FromSql for time::Tm {
 
 impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
-        s.bind_text(ix, time::at_utc(*self).rfc3339().as_slice())
+        s.bind_text(ix, time::at_utc(*self).strftime(time_fmt).as_slice())
     }
 }
 
@@ -101,6 +116,45 @@ impl FromSql for time::Timespec {
     fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<time::Timespec> {
         let tmo: SqliteResult<time::Tm> = FromSql::from_sql(row, col);
         tmo.map(|tm| tm.to_timespec())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use time::Tm;
+    use super::super::{DatabaseConnection, SqliteResult};
+    use super::super::{Row, Done, Error};
+
+    #[test]
+    fn get_tm() {
+        fn go() -> SqliteResult<()> {
+            let mut conn = try!(DatabaseConnection::new());
+            let mut stmt = try!(
+                conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
+            let mut results = try!(stmt.query([]));
+            match results.step() {
+                Row(ref mut row) => {
+                    assert_eq!(
+                        row.get::<uint, Tm>(0u),
+                        Tm { tm_sec: 0,
+                             tm_min: 0,
+                             tm_hour: 3,
+                             tm_mday: 3,
+                             tm_mon: 0,
+                             tm_year: 101,
+                             tm_wday: 0,
+                             tm_yday: 0,
+                             tm_isdst: 0,
+                             tm_gmtoff: 0,
+                             tm_nsec: 0
+                        });
+                    Ok(())
+                },
+                Done(what) => fail!("no row: {}", what),
+                Error(oops) =>  fail!("error: {}", oops)
+            }
+        }
+        go().unwrap();
     }
 }
 

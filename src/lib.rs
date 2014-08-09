@@ -101,10 +101,15 @@ impl<'db> core::PreparedStatement<'db> {
     /// modified][changes] is reported. (See `ResultSet::step()`.)
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn update(&'db mut self, values: &[&ToSql])
-                  -> SqliteResult<ResultSet<'db>> {
+    pub fn update(&'db mut self, values: &[&ToSql]) -> SqliteResult<uint> {
         try!(bind_values(self, values));
-        self.execute(true)
+        let mut results = try!(self.execute(true));
+        match results.step() {
+            Done(Some(changes)) => Ok(changes),
+            Done(None) => fail!("missing changes. can't happen. gotta refine types"),
+            Row(_) => Err(SQLITE_MISUSE),
+            Error(oops) => Err(oops)
+        }
     }
 }
 
@@ -153,14 +158,6 @@ impl RowIndex for &'static str {
 }
 
 
-// ref http://www.sqlite.org/c3ref/c_abort.html
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-enum SqliteOk {
-    SQLITE_OK = 0
-}
-
-
 /// The type used for returning and propagating sqlite3 errors.
 #[must_use]
 pub type SqliteResult<T> = Result<T, SqliteError>;
@@ -206,14 +203,6 @@ pub enum SqliteError {
     SQLITE_NOTADB    = 26
 }
 
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-// TODO: use, test this
-enum SqliteLogLevel {
-    SQLITE_NOTICE    = 27,
-    SQLITE_WARNING   = 28,
-}
-
 /// Outcome of evaluating one step of a statement.
 pub enum StepOutcome<'s, 'r> {
     /// Step yielded a row.
@@ -225,104 +214,20 @@ pub enum StepOutcome<'s, 'r> {
 }
 
 
-/// A value for binding to a parameter in a `PreparedStatement`
-///
-/// cf. [Parameters][]
-/// [Parameters]: http://www.sqlite.org/lang_expr.html#varparam
-///
-///  - *TODO: value?*
-///  - *TODO: zeroblob?*
-#[unstable]
-#[deriving(Show, PartialEq)]
-pub enum ParameterValue {
-    Blob(Vec<u8>),
-    Float64(f64),
-    Integer(int),
-    Integer64(i64),
-    Null,
-    Text(String),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::{DatabaseConnection, SqliteResult, ResultSet};
-    use super::Row;
-
-    #[test]
-    fn db_new_types() {
-        DatabaseConnection::new().unwrap();
-    }
-
-    #[test]
-    fn stmt_new_types() {
-        fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::new());
-            db.prepare("select 1 + 1").map( |_s| () )
-        }
-        go().unwrap();
-    }
-
-
-    fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::new());
-        let mut s = try!(db.prepare(sql));
-        let mut rows = try!(s.query([]));
-        Ok(f(&mut rows))
-    }
-
-    #[test]
-    fn query_two_rows() {
-        fn go() -> SqliteResult<(uint, i32)> {
-            let mut count = 0;
-            let mut sum = 0;
-
-            with_query("select 1
-                       union all
-                       select 2", |rows| {
-                loop {
-                    match rows.step() {
-                        Row(ref mut row) => {
-                            count += 1;
-                            sum += row.get(0u)
-                        },
-                        _ => break
-                    }
-                }
-                (count, sum)
-            })
-        }
-        assert_eq!(go(), Ok((2, 3)))
-    }
-
-    #[test]
-    fn named_rowindex() {
-        fn go() -> SqliteResult<(uint, i32)> {
-            let mut count = 0;
-            let mut sum = 0;
-
-            with_query("select 1 as col1
-                       union all
-                       select 2", |rows| {
-                loop {
-                    match rows.step() {
-                        Row(ref mut row) => {
-                            count += 1;
-                            sum += row.get("col1")
-                        },
-                        _ => break
-                    }
-                }
-                (count, sum)
-            })
-        }
-        assert_eq!(go(), Ok((2, 3)))
-    }
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+pub enum ColumnType {
+    SQLITE_INTEGER = 1,
+    SQLITE_FLOAT   = 2,
+    SQLITE_TEXT    = 3,
+    SQLITE_BLOB    = 4,
+    SQLITE_NULL    = 5
 }
 
 
 #[cfg(test)]
 mod bind_tests {
-    use super::DatabaseConnection;
+    use super::{DatabaseConnection, ResultSet};
     use super::{SqliteResult};
     use super::{Row, Done};
 
@@ -373,5 +278,36 @@ mod bind_tests {
             Ok(_) => (),
             Err(e) => fail!("oops! {}", e)
         }
+    }
+
+    fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
+        let mut db = try!(DatabaseConnection::new());
+        let mut s = try!(db.prepare(sql));
+        let mut rows = try!(s.query([]));
+        Ok(f(&mut rows))
+    }
+
+    #[test]
+    fn named_rowindex() {
+        fn go() -> SqliteResult<(uint, i32)> {
+            let mut count = 0;
+            let mut sum = 0;
+
+            with_query("select 1 as col1
+                       union all
+                       select 2", |rows| {
+                loop {
+                    match rows.step() {
+                        Row(ref mut row) => {
+                            count += 1;
+                            sum += row.get("col1")
+                        },
+                        _ => break
+                    }
+                }
+                (count, sum)
+            })
+        }
+        assert_eq!(go(), Ok((2, 3)))
     }
 }
