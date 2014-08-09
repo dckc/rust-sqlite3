@@ -12,7 +12,6 @@ use std::mem;
 use std::c_str;
 
 use super::{SQLITE_OK, SqliteError, StepOutcome, SqliteResult};
-use super::{ParameterValue, Text, Blob, Integer, Integer64, Float64, Null};
 use super::{Done, Row, Error};
 
 use ffi;
@@ -94,6 +93,10 @@ impl DatabaseConnection {
         }
     }
                 
+    /// Prepare/compile an SQL statement and give offset to remaining text.
+    ///
+    /// *TODO: give caller a safe way to use the offset. Perhaps
+    /// return a &'x str?*
     pub fn prepare_with_offset<'db>(&'db mut self, sql: &str)
                                     -> SqliteResult<(PreparedStatement<'db>, uint)> {
         let mut stmt = ptr::mut_null();
@@ -167,70 +170,71 @@ impl<'db> PreparedStatement<'db> {
     /// of rows modified][changes] is reported when the statement is done.
     /// (See `ResultSet::step()`.)
     ///
-    /// *TODO: support binding by name as well as by position?*
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn execute(&'db mut self, want_changes: bool,
-                   // TODO: figure out why &[ParameterValue] doesn't work.
-                   values: Vec<ParameterValue>)
+    pub fn execute(&'db mut self, want_changes: bool)
                    -> SqliteResult<ResultSet<'db>> {
-        {
-            let r = unsafe { ffi::sqlite3_reset(self.stmt) };
-            try!(decode_result(r, "sqlite3_reset"));
-        }
-
-        {
-            let r = unsafe { ffi::sqlite3_clear_bindings(self.stmt) };
-            assert_eq!(r, 0);
-        }
-
-        // SQL parameter index (starting from 1).
-        for (i, v) in values.iter().enumerate() {
-            try!(self.bind(i + 1, v))
-        }
-
         Ok(ResultSet { statement: self, want_changes: want_changes })
     }
 
-    /// Bind a value to a statement parameter.
+    /// Bind null to a statement parameter.
     ///
     /// **Note:** "The leftmost SQL parameter has an index of 1."[1]
     ///
     /// *TODO: support binding without copying strings, blobs*
     ///
     /// [1]: http://www.sqlite.org/c3ref/bind_blob.html
-    pub fn bind(&mut self, i: uint, value: &ParameterValue) -> SqliteResult<()> {
-        //debug!("`Cursor.bind_param(stmt={:?}, i={:?}, value={})`", self.stmt, i, value);
+    pub fn bind_null(&mut self, i: uint) -> SqliteResult<()> {
+        let ix = i as c_int;
+        let r = unsafe { ffi::sqlite3_bind_null(self.stmt, ix ) };
+        decode_result(r, "sqlite3_bind_null")
+    }
 
+    pub fn bind_int(&mut self, i: uint, value: i32) -> SqliteResult<()> {
+        let ix = i as c_int;
+        let r = unsafe { ffi::sqlite3_bind_int(self.stmt, ix, value) };
+        decode_result(r, "sqlite3_bind_int")
+    }
+
+    pub fn bind_int64(&mut self, i: uint, value: i64) -> SqliteResult<()> {
+        let ix = i as c_int;
+        let r = unsafe { ffi::sqlite3_bind_int64(self.stmt, ix, value) };
+        decode_result(r, "sqlite3_bind_int64")
+    }
+
+    pub fn bind_double(&mut self, i: uint, value: f64) -> SqliteResult<()> {
+        let ix = i as c_int;
+        let r = unsafe { ffi::sqlite3_bind_double(self.stmt, ix, value) };
+        decode_result(r, "sqlite3_bind_double")
+    }
+
+    /// Bind a (copy of a) str to a statement parameter.
+    pub fn bind_text(&mut self, i: uint, value: &str) -> SqliteResult<()> {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
         let transient = unsafe { mem::transmute(-1i) };
+        let len = value.len() as c_int;
+        let r = value.with_c_str( |_v| {
+            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
+        });
+        decode_result(r, "sqlite3_bind_text")
+    }
 
-        let r = match *value {
-            Null => { unsafe { ffi::sqlite3_bind_null(self.stmt, ix ) } },
-            Integer(ref v) => { unsafe { ffi::sqlite3_bind_int(self.stmt, ix, *v as c_int) } },
-            Integer64(ref v) => { unsafe { ffi::sqlite3_bind_int64(self.stmt, ix, *v) } },
-            Float64(ref v) => { unsafe { ffi::sqlite3_bind_double(self.stmt, ix, *v) } },
+    /// Bind a (copy of a) byte sequence to a statement parameter.
+    pub fn bind_blob(&mut self, i: uint, value: &[u8]) -> SqliteResult<()> {
+        let ix = i as c_int;
+        // SQLITE_TRANSIENT => SQLite makes a copy
+        let transient = unsafe { mem::transmute(-1i) };
+        let len = value.len() as c_int;
+        // from &[u8] to &[i8]
+        let val = unsafe { mem::transmute(value.as_ptr()) };
+        let r = unsafe { ffi::sqlite3_bind_blob(self.stmt, ix, val, len, transient) };
+        decode_result(r, "sqlite3_bind_blob")
+    }
 
-            Text(ref v) => {
-                let len = v.len() as c_int;
-                //debug!("  `Text`: v={:?}, l={:?}", v, l);
-
-                (*v).with_c_str( |_v| {
-                    unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
-                })
-            },
-
-            Blob(ref v) => {
-                let val = unsafe { mem::transmute(v.as_ptr()) };
-                let len = v.len() as c_int;
-                //debug!("`Blob`: v={:?}, l={:?}", v, l);
-
-                unsafe { ffi::sqlite3_bind_blob(self.stmt, ix, val, len, transient) }
-            }
-        };
-
-        decode_result(r, "sqlite3_bind_...")
+    pub fn clear_bindings(&'db mut self) {
+        // We ignore the return value, since no return codes are documented.
+        unsafe { ffi::sqlite3_clear_bindings(self.stmt) };
     }
 
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
@@ -252,6 +256,21 @@ pub struct ResultSet<'s> {
 enum Step {
     SQLITE_ROW       = 100,
     SQLITE_DONE      = 101,
+}
+
+
+#[unsafe_destructor]
+impl<'s> Drop for ResultSet<'s> {
+    fn drop(&mut self) {
+
+        // We ignore the return code from reset because it has already
+        // been reported:
+        //
+        // "If the most recent call to sqlite3_step(S) for the prepared
+        // statement S indicated an error, then sqlite3_reset(S)
+        // returns an appropriate error code."
+        unsafe { ffi::sqlite3_reset(self.statement.stmt) };
+    }
 }
 
 
@@ -277,10 +296,7 @@ impl<'s> ResultSet<'s> {
                     false => None
                 }
             }),
-            None => {
-                let err = from_i32::<SqliteError>(result);
-                Error(err.unwrap())
-            }
+            None => Error(from_i32::<SqliteError>(result).expect("step"))
         }
     }
 }
@@ -323,6 +339,18 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         unsafe { ffi::sqlite3_column_int(stmt, i_col) }
     }
 
+    pub fn column_int64(&self, col: uint) -> i64 {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        unsafe { ffi::sqlite3_column_int64(stmt, i_col) }
+    }
+
+    pub fn column_double(&self, col: uint) -> f64 {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        unsafe { ffi::sqlite3_column_double(stmt, i_col) }
+    }
+
     pub fn column_text(&self, col: uint) -> Option<String> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
@@ -343,15 +371,12 @@ impl<'s, 'r> ResultRow<'s, 'r> {
 }
 
 
-#[inline]
 pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
-        match from_i32::<SqliteError>(result) {
-            Some(code) => Err(code),
-            None => fail!("{} returned unexpected {:d}", context, result)
-        }
+        // .unwrap_or(SQLITE_ERROR)?
+        Err(from_i32::<SqliteError>(result).expect(context))
     }
 }
 

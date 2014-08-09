@@ -19,6 +19,7 @@
 //! }
 //!
 //! fn io() -> SqliteResult<()> {
+//!
 //!     let mut conn = try!(DatabaseConnection::new());
 //!
 //!     try!(conn.exec("CREATE TABLE person (
@@ -90,7 +91,8 @@ impl<'db> core::PreparedStatement<'db> {
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
     pub fn query(&'db mut self, values: &[&ToSql])
                  -> SqliteResult<ResultSet<'db>> {
-        self.execute(false, convert(values))
+        try!(bind_values(self, values));
+        self.execute(false)
     }
 
     /// Execute a statement after binding any parameters.
@@ -101,14 +103,18 @@ impl<'db> core::PreparedStatement<'db> {
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
     pub fn update(&'db mut self, values: &[&ToSql])
                   -> SqliteResult<ResultSet<'db>> {
-        self.execute(true, convert(values))
+        try!(bind_values(self, values));
+        self.execute(true)
     }
 }
 
-fn convert<'a>(values: &'a[&ToSql]) -> Vec<ParameterValue> {
-    values.iter().map(|v| v.to_sql()).collect()
-}
 
+fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
+    for (ix, v) in values.iter().enumerate() {
+        try!(v.to_sql(s, ix + 1));
+    }
+    Ok(())
+}
 
 impl<'s, 'r> core::ResultRow<'s, 'r> {
     pub fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
@@ -317,7 +323,7 @@ mod tests {
 #[cfg(test)]
 mod bind_tests {
     use super::DatabaseConnection;
-    use super::{SqliteResult, Integer, Text};
+    use super::{SqliteResult};
     use super::{Row, Done};
 
     #[test]
@@ -334,10 +340,10 @@ mod bind_tests {
             {
                 let mut tx = try!(database.prepare(
                     "INSERT INTO test (id, name, address) VALUES (?, ?, ?)"));
-                let mut rows = try!(tx.execute(true,
-                                               vec!(Integer(2),
-                                                    Text("Jane Doe".to_string()),
-                                                    Text("345 e Walnut".to_string()))));
+                try!(tx.bind_int(1, 2));
+                try!(tx.bind_text(2, "Jane Doe"));
+                try!(tx.bind_text(3, "345 e Walnut"));
+                let mut rows = try!(tx.execute(true));
                 assert_eq!(match rows.step() { Done(changed) => changed, _ => None },
                            Some(1));
             }
@@ -346,7 +352,7 @@ mod bind_tests {
             let mut rows = try!(q.query([]));
             match rows.step() {
                 Row(ref mut row) => {
-                    assert_eq!(row.get::<uint, int>(0), 1);
+                    assert_eq!(row.get::<uint, i32>(0), 1);
                     // TODO let name = q.get_text(1);
                     // assert_eq!(name.as_slice(), "John Doe");
                 },
@@ -355,7 +361,7 @@ mod bind_tests {
 
             match rows.step() {
                 Row(ref mut row) => {
-                    assert_eq!(row.get::<uint, int>(0), 2);
+                    assert_eq!(row.get::<uint, i32>(0), 2);
                     //TODO let addr = q.get_text(2);
                     // assert_eq!(addr.as_slice(), "345 e Walnut");
                 },
