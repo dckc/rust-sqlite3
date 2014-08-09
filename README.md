@@ -11,19 +11,38 @@ Share and enjoy. LICENSE: MIT.
 
 ## Documentation, Status
 
-[rust-sqlite3 package documentation][docs] is hosted on rust-ci.
+[rust-sqlite3 package documentation][docs] is hosted on rust-ci. Three
+layers of API are provided:
+
+  - `mod ffi` provides exhaustive, though unsafe, [bindgen] bindings for `libsqlite.h`
+  - `mod core` provides a minimal safe interface to the basic sqlite3 API
+  - `mod types` provides `ToSql`/`FromSql` traits, and the library provides
+    convenient `query()` and `update()` APIs.
+  
+The API design is perhaps stabilizing, though testing is uneven and I
+have not used the library beyond trivial integration tests.
 
 [docs]: http://www.rust-ci.org/dckc/rust-sqlite3/doc/sqlite3/
-
-Basic API design issues are worked out, but only a handful of features are supported.
-
- - TODO: the other 95% of the relevant features
+[bindgen]: https://github.com/crabtw/rust-bindgen
 
 <div>
 <a href="https://travis-ci.org/dckc/rust-sqlite3/builds">
  <img alt="build status" src="https://travis-ci.org/dckc/rust-sqlite3.svg?branch=master"/>
 </a>
 </div>
+
+### TODO
+
+  - another thorough read-through of the sqlite API intro,
+    with unit tests to match; especially...
+    - unit testing other than the happy-paths
+  - `ToSql`/`FromSql` can now be implemented by clients,
+    but the `types` module probably doesn't hit the 80% mark yet;
+    e.g. it's missing uint and &[u8].
+  - turn on warnings for missing documentation
+  - investigate test coverage tools for rust
+  - basic benchmarking
+
 
 ## Motivation and Acknowledgements
 
