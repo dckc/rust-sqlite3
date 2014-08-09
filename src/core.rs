@@ -74,6 +74,25 @@
 //!     }
 //! }
 //! ```
+//!
+//! The `DatabaseConnection` and `PreparedStatment` structures are
+//! memory-safe versions of the sqlite3 connection and prepared
+//! statement structures. A `PreparedStatement` maintains mutable,
+//! and hence exclusive, reference to the database connection.
+//! Note the use of blocks avoid borrowing the connection more
+//! than once at a time.
+//!
+//! In addition:
+//!
+//!   - `ResultSet` represents, as a rust lifetime, all of the steps
+//!     of one execution of a statement. (*Ideally, it would be an
+//!     Iterator over `ResultRow`s, but the `Iterator::next()`
+//!     function has no lifetime parameter.*) Use of mutable
+//!     references ensures that its lifetime is subsumed by the
+//!     statement lifetime.  Its destructor resets the statement.
+//!
+//!   - `ResultRow` is a lifetime for access to the columns of one row.
+//!
 
 use libc::{c_int};
 use std::num::from_i32;
