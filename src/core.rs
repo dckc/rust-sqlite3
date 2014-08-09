@@ -357,7 +357,7 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         match unsafe {
             let s = ffi::sqlite3_column_text(stmt, i_col);
             if s == ptr::null() { None }
-            else { Some(c_str::CString::new(mem::transmute(s), true)) }
+            else { Some(c_str::CString::new(mem::transmute(s), false)) }
         } {
             Some(c_str) => match c_str.as_str() {
                 Some(str) => Some(str.to_string()),
