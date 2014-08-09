@@ -5,6 +5,7 @@ use time::Timespec;
 
 
 use sqlite3::{DatabaseConnection, Row, Error, Done, SqliteResult};
+use sqlite3::{SQLITE_NULL, SQLITE_TEXT};
 
 #[deriving(Show)]
 struct Person {
@@ -15,14 +16,13 @@ struct Person {
 }
 
 pub fn main() {
-    println!("hello!");
     match io() {
-        Ok(_) => (),
+        Ok(ppl) => println!("Found people: {}", ppl),
         Err(oops) => fail!(oops)
     }
 }
 
-fn io() -> SqliteResult<()> {
+fn io() -> SqliteResult<Vec<Person>> {
     let mut conn = try!(DatabaseConnection::new());
 
     try!(conn.exec("CREATE TABLE person (
@@ -30,7 +30,6 @@ fn io() -> SqliteResult<()> {
                  name            VARCHAR NOT NULL,
                  time_created    TIMESTAMP NOT NULL
                )"));
-    println!("created");
 
     let me = Person {
         id: 0,
@@ -41,30 +40,30 @@ fn io() -> SqliteResult<()> {
         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
                            VALUES ($1, $2)"));
         let changes = try!(tx.update([&me.name, &me.time_created]));
-        println!("inserted {} {}", changes, me);
+        assert_eq!(changes, 1);
     }
 
     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
     let mut rows = try!(stmt.query([]));
-    println!("selecting");
+
+    let mut ppl = vec!();
+
     loop {
         match rows.step() {
             Row(ref mut row) => {
-                println!("type of row 0: {}", row.column_type(0));
-                println!("type of row 1: {}", row.column_type(1));
-                println!("type of row 2: {}", row.column_type(2));
-                println!("text of row 2: {}", row.column_text(2));
+                assert_eq!(row.column_type(0), SQLITE_NULL);
+                assert_eq!(row.column_type(1), SQLITE_TEXT);
+                assert_eq!(row.column_type(2), SQLITE_TEXT);
 
-                let person = Person {
+                ppl.push(Person {
                     id: row.get(0u),
                     name: row.get(1u),
                     time_created: row.get(2u)
-                };
-                println!("Found person {}", person);
+                })
             },
             Error(oops) => return Err(oops),
             Done(_) => break
         }
     }
-    Ok(())
+    Ok(ppl)
 }

@@ -3,12 +3,14 @@
 //! [sqlite3 API]: http://www.sqlite.org/c3ref/intro.html
 //!
 //! ```rust
-//! extern crate sqlite3;
 //! extern crate time;
+//! extern crate sqlite3;
 //!
 //! use time::Timespec;
 //!
-//! use sqlite3::{DatabaseConnection, Row, SqliteResult};
+//!
+//! use sqlite3::{DatabaseConnection, Row, Error, Done, SqliteResult};
+//! use sqlite3::{SQLITE_NULL, SQLITE_TEXT};
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -18,10 +20,16 @@
 //!     // TODO: data: Option<Vec<u8>>
 //! }
 //!
-//! fn io() -> SqliteResult<()> {
-//!
+//! pub fn main() {
+//!     match io() {
+//!         Ok(ppl) => println!("Found people: {}", ppl),
+//!         Err(oops) => fail!(oops)
+//!     }
+//! }
+//! 
+//! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::new());
-//!
+//! 
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
@@ -33,30 +41,36 @@
 //!         name: "Dan".to_string(),
 //!         time_created: time::get_time(),
 //!     };
-//!     try!(try!(conn.prepare("INSERT INTO person (name, time_created)
-//!                   VALUES ($1, $2)")).update(
-//!               [&me.name, &me.time_created]));
-//!
+//!     {
+//!         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
+//!                            VALUES ($1, $2)"));
+//!         let changes = try!(tx.update([&me.name, &me.time_created]));
+//!         assert_eq!(changes, 1);
+//!     }
+//! 
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
 //!     let mut rows = try!(stmt.query([]));
+//! 
+//!     let mut ppl = vec!();
+//! 
 //!     loop {
 //!         match rows.step() {
 //!             Row(ref mut row) => {
-//!                 let person = Person {
+//!                 assert_eq!(row.column_type(0), SQLITE_NULL);
+//!                 assert_eq!(row.column_type(1), SQLITE_TEXT);
+//!                 assert_eq!(row.column_type(2), SQLITE_TEXT);
+//! 
+//!                 ppl.push(Person {
 //!                     id: row.get(0u),
 //!                     name: row.get(1u),
 //!                     time_created: row.get(2u)
-//!                 };
-//!                 println!("Found person {}", person);
+//!                 })
 //!             },
-//!             _ => break
+//!             Error(oops) => return Err(oops),
+//!             Done(_) => break
 //!         }
 //!     }
-//!     Ok(())
-//! }
-//!
-//! fn main() {
-//!   io().unwrap();
+//!     Ok(ppl)
 //! }
 //! ```
 
@@ -92,7 +106,7 @@ impl<'db> core::PreparedStatement<'db> {
     pub fn query(&'db mut self, values: &[&ToSql])
                  -> SqliteResult<ResultSet<'db>> {
         try!(bind_values(self, values));
-        self.execute(false)
+        Ok(self.execute(false))
     }
 
     /// Execute a statement after binding any parameters.
@@ -103,7 +117,7 @@ impl<'db> core::PreparedStatement<'db> {
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
     pub fn update(&'db mut self, values: &[&ToSql]) -> SqliteResult<uint> {
         try!(bind_values(self, values));
-        let mut results = try!(self.execute(true));
+        let mut results = self.execute(true);
         match results.step() {
             Done(Some(changes)) => Ok(changes),
             Done(None) => fail!("missing changes. can't happen. gotta refine types"),
@@ -248,8 +262,8 @@ mod bind_tests {
                 try!(tx.bind_int(1, 2));
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
-                let mut rows = try!(tx.execute(true));
-                assert_eq!(match rows.step() { Done(changed) => changed, _ => None },
+                let mut results = tx.execute(true);
+                assert_eq!(match results.step() { Done(changed) => changed, _ => None },
                            Some(1));
             }
 

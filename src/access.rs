@@ -17,6 +17,11 @@ use ffi;
 
 /// Open a database by filename.
 ///
+/// *TODO: test for "Note that sqlite3_open() can be used to either
+/// open existing database files or to create and open new database
+/// files."*
+/// 
+///
 /// Refer to [Opening A New Database][open] regarding URI filenames.
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html

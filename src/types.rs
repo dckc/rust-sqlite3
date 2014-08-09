@@ -20,7 +20,7 @@ pub trait ToSql {
 ///   - TODO: consider a `types` submodule
 ///   - TODO: many more implementors, including Option<T>
 pub trait FromSql {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<Self>;
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<Self>;
 }
 
 impl ToSql for i32 {
@@ -30,7 +30,7 @@ impl ToSql for i32 {
 }
 
 impl FromSql for i32 {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<i32> { Ok(row.column_int(col)) }
 }
 
 impl ToSql for i64 {
@@ -40,7 +40,7 @@ impl ToSql for i64 {
 }
 
 impl FromSql for i64 {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<i64> { Ok(row.column_int64(col)) }
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<i64> { Ok(row.column_int64(col)) }
 }
 
 impl ToSql for f64 {
@@ -50,7 +50,7 @@ impl ToSql for f64 {
 }
 
 impl FromSql for f64 {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<f64> { Ok(row.column_double(col)) }
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<f64> { Ok(row.column_double(col)) }
 }
 
 impl<T: ToSql + Clone> ToSql for Option<T> {
@@ -63,7 +63,7 @@ impl<T: ToSql + Clone> ToSql for Option<T> {
 }
 
 impl<T: FromSql + Clone> FromSql for Option<T> {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<Option<T>> {
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<Option<T>> {
         match row.column_type(col) {
             SQLITE_NULL => Ok(None),
             _ => FromSql::from_sql(row, col).map(|x| Some(x))
@@ -79,8 +79,8 @@ impl ToSql for String {
 
 
 impl FromSql for String {
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<String> {
-        Ok(row.column_text(col).to_string())
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<String> {
+        Ok(row.column_text(col).unwrap_or("".to_string()))
     }
 }
 
@@ -93,7 +93,7 @@ pub static time_fmt: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     /// TODO: propagate error message
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<time::Tm> {
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
             None => Err(SQLITE_MISMATCH),
             Some(txt) => match time::strptime(txt.as_slice(), time_fmt) {
@@ -113,7 +113,7 @@ impl ToSql for time::Timespec {
 
 impl FromSql for time::Timespec {
     /// TODO: propagate error message
-    fn from_sql(row: &ResultRow, col: uint) -> SqliteResult<time::Timespec> {
+    fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Timespec> {
         let tmo: SqliteResult<time::Tm> = FromSql::from_sql(row, col);
         tmo.map(|tm| tm.to_timespec())
     }

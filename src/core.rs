@@ -4,6 +4,76 @@
 //! To go beyond that, use the (unsafe) `ffi` module directly.
 //!
 //! [intro]: http://www.sqlite.org/cintro.html
+//!
+//! ```rust
+//! extern crate sqlite3;
+//!
+//! use sqlite3::{DatabaseConnection, SqliteResult, Row, Done, Error};
+//!
+//! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
+//!     let mut conn = try!(DatabaseConnection::new());
+//!
+//!     try!(conn.exec("
+//!        create table items (
+//!                    id integer,
+//!                    description varchar(40),
+//!                    price integer
+//!                    )"));
+//!
+//!     Ok(conn)
+//!  }
+//!
+//! fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
+//!     {
+//!         let mut stmt = try!(conn.prepare(
+//!             "insert into items (id, description, price)
+//!            values (1, 'stuff', 10)"));
+//!         let mut results = stmt.execute(true);
+//!         let changes = match results.step() {
+//!             Done(Some(qty)) => qty,
+//!             Done(None) => fail!("cannot happen; we gave true to execute()"),
+//!             Row(_) => fail!("row from insert?!"),
+//!             Error(oops) => fail!(oops)
+//!         };
+//!         assert_eq!(changes, 1);
+//!     }
+//!     {
+//!         let mut stmt = try!(conn.prepare(
+//!             "select * from items"));
+//!         let mut results = stmt.execute(false);
+//!         match results.step() {
+//!             Row(ref mut row1) => {
+//!                 let id = row1.column_int(0);
+//!                 let desc_opt = row1.column_text(1).expect("no desc?!");
+//!                 let price = row1.column_int(2);
+//!
+//!                 assert_eq!(id, 1);
+//!                 assert_eq!(desc_opt, "stuff".to_string());
+//!                 assert_eq!(price, 10);
+//! 
+//!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
+//!             },
+//!             Done(_) => fail!("where did our row go?"),
+//!             Error(oops) => fail!(oops)
+//!         }
+//!     }
+//! }
+//!
+//! pub fn main() {
+//!     match convenience_exec() {
+//!         Ok(ref mut db) => {
+//!             match typical_usage(db) {
+//!                 Ok(txt) => println!("item: {}", txt),
+//!                 Err(oops) => {
+//!                     fail!("error: {} msg: {}", oops,
+//!                           db.errmsg())
+//!                 }
+//!             }
+//!         },
+//!         Err(oops) => fail!(oops)
+//!     }
+//! }
+//! ```
 
 use libc::{c_int};
 use std::num::from_i32;
@@ -15,6 +85,7 @@ pub use super::{SqliteError, StepOutcome, SqliteResult, ColumnType, SQLITE_NULL}
 pub use super::{Done, Row, Error};
 
 use ffi;
+
 
 // ref http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -129,6 +200,19 @@ impl DatabaseConnection {
         }
     }
 
+    pub fn errmsg(&mut self) -> String {
+        let result = unsafe { ffi::sqlite3_errmsg(self.db) };
+        if result == ptr::null() {
+            // returning Option<String> doesn't seem worthwhile.
+            "".to_string()
+        } else {
+            let bytes = unsafe { c_str::CString::new(result, false) };
+            match bytes.as_str() {
+                Some(msg) => msg.to_string(),
+                None => "".to_string()
+            }
+        }
+    }
     /// One-Step Query Execution Interface
     ///
     /// cf [sqlite3_exec][exec]
@@ -180,7 +264,7 @@ impl<'db> Drop for PreparedStatement<'db> {
 
 
 impl<'db> PreparedStatement<'db> {
-    /// Execute a statement after binding any parameters.
+    /// Begin executing a statement.
     ///
     /// The `want_changes` argument determines whether the [number
     /// of rows modified][changes] is reported when the statement is done.
@@ -188,9 +272,8 @@ impl<'db> PreparedStatement<'db> {
     ///
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn execute(&'db mut self, want_changes: bool)
-                   -> SqliteResult<ResultSet<'db>> {
-        Ok(ResultSet { statement: self, want_changes: want_changes })
+    pub fn execute(&'db mut self, want_changes: bool) -> ResultSet<'db> {
+        ResultSet { statement: self, want_changes: want_changes }
     }
 
     /// Bind null to a statement parameter.
@@ -380,7 +463,7 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         unsafe { ffi::sqlite3_column_double(stmt, i_col) }
     }
 
-    pub fn column_text(&self, col: uint) -> Option<String> {
+    pub fn column_text(&mut self, col: uint) -> Option<String> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         match unsafe {
