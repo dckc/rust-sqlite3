@@ -44,26 +44,22 @@ fn io() -> SqliteResult<Vec<Person>> {
     }
 
     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
-    let mut rows = stmt.execute();
 
     let mut ppl = vec!();
-
-    loop {
-        match rows.step() {
-            Some(Ok(ref mut row)) => {
-                assert_eq!(row.column_type(0), SQLITE_NULL);
-                assert_eq!(row.column_type(1), SQLITE_TEXT);
-                assert_eq!(row.column_type(2), SQLITE_TEXT);
-
-                ppl.push(Person {
-                    id: row.get(0u),
-                    name: row.get(1u),
-                    time_created: row.get(2u)
-                })
-            },
-            Some(Err(oops)) => return Err(oops),
-            None => break
-        }
-    }
+    try!(stmt.query(
+        [],
+        |row| {
+            assert_eq!(row.column_type(0), SQLITE_NULL);
+            assert_eq!(row.column_type(1), SQLITE_TEXT);
+            assert_eq!(row.column_type(2), SQLITE_TEXT);
+            
+            Ok(Person {
+                id: row.get(0u),
+                name: row.get(1u),
+                time_created: row.get(2u)
+            })
+        },
+        (),
+        |_, person| { ppl.push(person) }));
     Ok(ppl)
 }
