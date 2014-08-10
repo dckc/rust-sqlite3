@@ -8,7 +8,7 @@
 //! ```rust
 //! extern crate sqlite3;
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult, Row, Done, Error};
+//! use sqlite3::{DatabaseConnection, SqliteResult};
 //!
 //! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
 //!     let mut conn = try!(DatabaseConnection::new());
@@ -28,21 +28,20 @@
 //!         let mut stmt = try!(conn.prepare(
 //!             "insert into items (id, description, price)
 //!            values (1, 'stuff', 10)"));
-//!         let mut results = stmt.execute(true);
-//!         let changes = match results.step() {
-//!             Done(Some(qty)) => qty,
-//!             Done(None) => fail!("cannot happen; we gave true to execute()"),
-//!             Row(_) => fail!("row from insert?!"),
-//!             Error(oops) => fail!(oops)
+//!         let mut results = stmt.execute();
+//!         match results.step() {
+//!             None => (),
+//!             Some(Ok(_)) => fail!("row from insert?!"),
+//!             Some(Err(oops)) => fail!(oops)
 //!         };
-//!         assert_eq!(changes, 1);
 //!     }
+//!     assert_eq!(conn.changes(), 1);
 //!     {
 //!         let mut stmt = try!(conn.prepare(
 //!             "select * from items"));
-//!         let mut results = stmt.execute(false);
+//!         let mut results = stmt.execute();
 //!         match results.step() {
-//!             Row(ref mut row1) => {
+//!             Some(Ok(ref mut row1)) => {
 //!                 let id = row1.column_int(0);
 //!                 let desc_opt = row1.column_text(1).expect("no desc?!");
 //!                 let price = row1.column_int(2);
@@ -50,11 +49,11 @@
 //!                 assert_eq!(id, 1);
 //!                 assert_eq!(desc_opt, "stuff".to_string());
 //!                 assert_eq!(price, 10);
-//! 
+//!
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
-//!             Done(_) => fail!("where did our row go?"),
-//!             Error(oops) => fail!(oops)
+//!             Some(Err(oops)) => fail!(oops),
+//!             None => fail!("where did our row go?")
 //!         }
 //!     }
 //! }
@@ -100,8 +99,7 @@ use std::ptr;
 use std::mem;
 use std::c_str;
 
-pub use super::{SqliteError, StepOutcome, SqliteResult, ColumnType, SQLITE_NULL};
-pub use super::{Done, Row, Error};
+pub use super::{SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
 
 use ffi;
 
@@ -198,7 +196,7 @@ impl DatabaseConnection {
             Err(e) => Err(e)
         }
     }
-                
+
     /// Prepare/compile an SQL statement and give offset to remaining text.
     ///
     /// *TODO: give caller a safe way to use the offset. Perhaps
@@ -213,7 +211,7 @@ impl DatabaseConnection {
         match decode_result(r, "sqlite3_prepare_v2") {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
-                Ok((PreparedStatement { stmt: stmt, conn: self }, offset))
+                Ok((PreparedStatement { stmt: stmt }, offset))
             },
             Err(code) => Err(code)
         }
@@ -232,6 +230,7 @@ impl DatabaseConnection {
             }
         }
     }
+
     /// One-Step Query Execution Interface
     ///
     /// cf [sqlite3_exec][exec]
@@ -240,10 +239,17 @@ impl DatabaseConnection {
     ///  - TODO: callback support?
     ///  - TODO: errmsg support
     pub fn exec(&mut self, sql: &str) -> SqliteResult<()> {
+        let db = self.db;
         let result = sql.with_c_str(
-            |c_sql| unsafe { ffi::sqlite3_exec(self.db, c_sql, None,
+            |c_sql| unsafe { ffi::sqlite3_exec(db, c_sql, None,
                                                ptr::mut_null(), ptr::mut_null()) });
         decode_result(result, "sqlite3_exec")
+    }
+
+    pub fn changes(&self) -> uint {
+        let db = self.db;
+        let count = unsafe { ffi::sqlite3_changes(db) };
+        count as uint
     }
 
     /// Expose the underlying `sqlite3` struct pointer for use
@@ -256,7 +262,6 @@ impl DatabaseConnection {
 
 /// A prepared statement.
 pub struct PreparedStatement<'db> {
-    conn: &'db mut DatabaseConnection,
     stmt: *mut ffi::sqlite3_stmt
 }
 
@@ -284,15 +289,8 @@ impl<'db> Drop for PreparedStatement<'db> {
 
 impl<'db> PreparedStatement<'db> {
     /// Begin executing a statement.
-    ///
-    /// The `want_changes` argument determines whether the [number
-    /// of rows modified][changes] is reported when the statement is done.
-    /// (See `ResultSet::step()`.)
-    ///
-    ///
-    /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn execute(&'db mut self, want_changes: bool) -> ResultSet<'db> {
-        ResultSet { statement: self, want_changes: want_changes }
+    pub fn execute(&'db mut self) -> ResultSet<'db> {
+        ResultSet { statement: self }
     }
 
     /// Bind null to a statement parameter.
@@ -366,7 +364,6 @@ impl<'db> PreparedStatement<'db> {
 /// Results of executing a `prepare()`d statement.
 pub struct ResultSet<'s> {
     statement: &'s mut PreparedStatement<'s>,
-    want_changes: bool
 }
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -393,28 +390,19 @@ impl<'s> Drop for ResultSet<'s> {
 
 
 impl<'s> ResultSet<'s> {
-    /// Iterate over rows resulting from execution of a prepared statement.
+    /// Execute the next step of a prepared statement.
     ///
     /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
     /// so we need a lifetime constraint. The unfortunate result is that
     ///  `ResultSet` cannot implement the `Iterator` trait.
-    pub fn step<'r>(&'r mut self) -> StepOutcome<'s, 'r> {
+    pub fn step<'r>(&'r mut self) -> Option<SqliteResult<ResultRow<'s, 'r>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match from_i32::<Step>(result) {
             Some(SQLITE_ROW) => {
-                Row(ResultRow{ rows: self })
+                Some(Ok(ResultRow{ rows: self }))
             },
-            Some(SQLITE_DONE) => Done({
-                match self.want_changes {
-                    true => {
-                        let db = self.statement.conn.db;
-                        let count = unsafe { ffi::sqlite3_changes(db) };
-                        Some(count as uint)
-                    }
-                    false => None
-                }
-            }),
-            None => Error(from_i32::<SqliteError>(result).expect("step"))
+            Some(SQLITE_DONE) => None,
+            None => Some(Err(from_i32::<SqliteError>(result).expect("step")))
         }
     }
 }
@@ -515,7 +503,6 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
-    use super::Row;
 
     #[test]
     fn db_new_types() {
@@ -535,7 +522,7 @@ mod tests {
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
         let mut db = try!(DatabaseConnection::new());
         let mut s = try!(db.prepare(sql));
-        let mut rows = try!(s.query([]));
+        let mut rows = s.execute();
         Ok(f(&mut rows))
     }
 
@@ -550,7 +537,7 @@ mod tests {
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Row(ref mut row) => {
+                        Some(Ok(ref mut row)) => {
                             count += 1;
                             sum += row.get(0u)
                         },

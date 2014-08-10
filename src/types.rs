@@ -123,7 +123,6 @@ impl FromSql for time::Timespec {
 mod tests {
     use time::Tm;
     use super::super::{DatabaseConnection, SqliteResult};
-    use super::super::{Row, Done, Error};
 
     #[test]
     fn get_tm() {
@@ -131,9 +130,9 @@ mod tests {
             let mut conn = try!(DatabaseConnection::new());
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
-            let mut results = try!(stmt.query([]));
+            let mut results = stmt.execute();
             match results.step() {
-                Row(ref mut row) => {
+                Some(Ok(ref mut row)) => {
                     assert_eq!(
                         row.get::<uint, Tm>(0u),
                         Tm { tm_sec: 0,
@@ -150,8 +149,8 @@ mod tests {
                         });
                     Ok(())
                 },
-                Done(what) => fail!("no row: {}", what),
-                Error(oops) =>  fail!("error: {}", oops)
+                None => fail!("no row"),
+                Some(Err(oops)) =>  fail!("error: {}", oops)
             }
         }
         go().unwrap();

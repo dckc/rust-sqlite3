@@ -4,7 +4,7 @@ extern crate sqlite3;
 use time::Timespec;
 
 
-use sqlite3::{DatabaseConnection, Row, Error, Done, SqliteResult};
+use sqlite3::{DatabaseConnection, SqliteResult};
 use sqlite3::{SQLITE_NULL, SQLITE_TEXT};
 
 #[deriving(Show)]
@@ -39,18 +39,18 @@ fn io() -> SqliteResult<Vec<Person>> {
     {
         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
                            VALUES ($1, $2)"));
-        let changes = try!(tx.update([&me.name, &me.time_created]));
+        let changes = try!(conn.update(&mut tx, [&me.name, &me.time_created]));
         assert_eq!(changes, 1);
     }
 
     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
-    let mut rows = try!(stmt.query([]));
+    let mut rows = stmt.execute();
 
     let mut ppl = vec!();
 
     loop {
         match rows.step() {
-            Row(ref mut row) => {
+            Some(Ok(ref mut row)) => {
                 assert_eq!(row.column_type(0), SQLITE_NULL);
                 assert_eq!(row.column_type(1), SQLITE_TEXT);
                 assert_eq!(row.column_type(2), SQLITE_TEXT);
@@ -61,8 +61,8 @@ fn io() -> SqliteResult<Vec<Person>> {
                     time_created: row.get(2u)
                 })
             },
-            Error(oops) => return Err(oops),
-            Done(_) => break
+            Some(Err(oops)) => return Err(oops),
+            None => break
         }
     }
     Ok(ppl)

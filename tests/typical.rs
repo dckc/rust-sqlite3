@@ -1,6 +1,6 @@
 extern crate sqlite3;
 
-use sqlite3::{DatabaseConnection, SqliteResult, Row, Done, Error};
+use sqlite3::{DatabaseConnection, SqliteResult};
 
 fn convenience_exec() -> SqliteResult<DatabaseConnection> {
     let mut conn = try!(DatabaseConnection::new());
@@ -20,21 +20,20 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         let mut stmt = try!(conn.prepare(
             "insert into items (id, description, price)
            values (1, 'stuff', 10)"));
-        let mut results = stmt.execute(true);
-        let changes = match results.step() {
-            Done(Some(qty)) => qty,
-            Done(None) => fail!("cannot happen; we gave true to execute()"),
-            Row(_) => fail!("row from insert?!"),
-            Error(oops) => fail!(oops)
+        let mut results = stmt.execute();
+        match results.step() {
+            None => (),
+            Some(Ok(_)) => fail!("row from insert?!"),
+            Some(Err(oops)) => fail!(oops)
         };
-        assert_eq!(changes, 1);
     }
+    assert_eq!(conn.changes(), 1);
     {
         let mut stmt = try!(conn.prepare(
             "select * from items"));
-        let mut results = stmt.execute(false);
+        let mut results = stmt.execute();
         match results.step() {
-            Row(ref mut row1) => {
+            Some(Ok(ref mut row1)) => {
                 let id = row1.column_int(0);
                 let desc_opt = row1.column_text(1).expect("no desc?!");
                 let price = row1.column_int(2);
@@ -45,8 +44,8 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 
                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
             },
-            Done(_) => fail!("where did our row go?"),
-            Error(oops) => fail!(oops)
+            Some(Err(oops)) => fail!(oops),
+            None => fail!("where did our row go?")
         }
     }
 }

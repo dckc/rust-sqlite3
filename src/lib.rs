@@ -9,7 +9,7 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, Row, Error, Done, SqliteResult};
+//! use sqlite3::{DatabaseConnection, SqliteResult};
 //! use sqlite3::{SQLITE_NULL, SQLITE_TEXT};
 //!
 //! #[deriving(Show)]
@@ -26,10 +26,10 @@
 //!         Err(oops) => fail!(oops)
 //!     }
 //! }
-//! 
+//!
 //! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::new());
-//! 
+//!
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
@@ -44,30 +44,30 @@
 //!     {
 //!         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
 //!                            VALUES ($1, $2)"));
-//!         let changes = try!(tx.update([&me.name, &me.time_created]));
+//!         let changes = try!(conn.update(&mut tx, [&me.name, &me.time_created]));
 //!         assert_eq!(changes, 1);
 //!     }
-//! 
+//!
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
-//!     let mut rows = try!(stmt.query([]));
-//! 
+//!     let mut rows = stmt.execute();
+//!
 //!     let mut ppl = vec!();
-//! 
+//!
 //!     loop {
 //!         match rows.step() {
-//!             Row(ref mut row) => {
+//!             Some(Ok(ref mut row)) => {
 //!                 assert_eq!(row.column_type(0), SQLITE_NULL);
 //!                 assert_eq!(row.column_type(1), SQLITE_TEXT);
 //!                 assert_eq!(row.column_type(2), SQLITE_TEXT);
-//! 
+//!
 //!                 ppl.push(Person {
 //!                     id: row.get(0u),
 //!                     name: row.get(1u),
 //!                     time_created: row.get(2u)
 //!                 })
 //!             },
-//!             Error(oops) => return Err(oops),
-//!             Done(_) => break
+//!             Some(Err(oops)) => return Err(oops),
+//!             None => break
 //!         }
 //!     }
 //!     Ok(ppl)
@@ -96,37 +96,53 @@ pub mod ffi;
 pub mod access;
 
 
-impl<'db> core::PreparedStatement<'db> {
-    /// Execute a query after binding any parameters.
-    ///
-    /// No [number of rows modified][changes] is reported when the
-    /// statement is done. (See `ResultSet::step()`.)
-    ///
-    /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn query(&'db mut self, values: &[&ToSql])
-                 -> SqliteResult<ResultSet<'db>> {
-        try!(bind_values(self, values));
-        Ok(self.execute(false))
-    }
-
+impl core::DatabaseConnection {
     /// Execute a statement after binding any parameters.
     ///
     /// When the statement is done, The [number of rows
-    /// modified][changes] is reported. (See `ResultSet::step()`.)
+    /// modified][changes] is reported.
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn update(&'db mut self, values: &[&ToSql]) -> SqliteResult<uint> {
-        try!(bind_values(self, values));
-        let mut results = self.execute(true);
-        match results.step() {
-            Done(Some(changes)) => Ok(changes),
-            Done(None) => fail!("missing changes. can't happen. gotta refine types"),
-            Row(_) => Err(SQLITE_MISUSE),
-            Error(oops) => Err(oops)
-        }
+    pub fn update<'db, 's>(&'db mut self,
+                           stmt: &'s mut PreparedStatement<'s>,
+                           values: &[&ToSql]) -> SqliteResult<uint> {
+        let check = {
+            try!(bind_values(stmt, values));
+            let mut results = stmt.execute();
+            match results.step() {
+                None => Ok(()),
+                Some(Ok(_row)) => Err(SQLITE_MISUSE),
+                Some(Err(e)) => Err(e)
+            }
+        };
+        check.map(|_ok| self.changes())
     }
 }
 
+impl<'s> core::PreparedStatement<'s> {
+    /// Fold query results, after binding parameters.
+    pub fn query<T, U>(&'s mut self,
+                       values: &[&ToSql],
+                       each_row: |&mut ResultRow|: 's -> SqliteResult<T>,
+                       init: U,
+                       accum: |U, T| -> U
+                       ) -> SqliteResult<U> {
+        try!(bind_values(self, values));
+        let mut results = self.execute();
+        let mut acc = init;
+        loop {
+            match results.step() {
+                None => break,
+                Some(Ok(ref mut row)) => match each_row(row) {
+                    Ok(t) => acc = accum(acc, t),
+                    Err(e) => return Err(e)
+                },
+                Some(Err(e)) => return Err(e)
+            }
+        }
+        Ok(acc)
+    }
+}
 
 fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     for (ix, v) in values.iter().enumerate() {
@@ -134,6 +150,7 @@ fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteR
     }
     Ok(())
 }
+
 
 impl<'s, 'r> core::ResultRow<'s, 'r> {
     pub fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
@@ -217,16 +234,6 @@ pub enum SqliteError {
     SQLITE_NOTADB    = 26
 }
 
-/// Outcome of evaluating one step of a statement.
-pub enum StepOutcome<'s, 'r> {
-    /// Step yielded a row.
-    Row(ResultRow<'s, 'r>),
-    /// Statement is done; changes are reported if requested.
-    Done(Option<uint>),
-    /// Error outcome.
-    Error(SqliteError)
-}
-
 
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
@@ -243,7 +250,6 @@ pub enum ColumnType {
 mod bind_tests {
     use super::{DatabaseConnection, ResultSet};
     use super::{SqliteResult};
-    use super::{Row, Done};
 
     #[test]
     fn bind_fun() {
@@ -262,15 +268,15 @@ mod bind_tests {
                 try!(tx.bind_int(1, 2));
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
-                let mut results = tx.execute(true);
-                assert_eq!(match results.step() { Done(changed) => changed, _ => None },
-                           Some(1));
+                let mut results = tx.execute();
+                assert!(results.step().is_none());
             }
+            assert_eq!(database.changes(), 1);
 
             let mut q = try!(database.prepare("select * from test order by id"));
-            let mut rows = try!(q.query([]));
+            let mut rows = q.execute();
             match rows.step() {
-                Row(ref mut row) => {
+                Some(Ok(ref mut row)) => {
                     assert_eq!(row.get::<uint, i32>(0), 1);
                     // TODO let name = q.get_text(1);
                     // assert_eq!(name.as_slice(), "John Doe");
@@ -279,7 +285,7 @@ mod bind_tests {
             }
 
             match rows.step() {
-                Row(ref mut row) => {
+                Some(Ok(ref mut row)) => {
                     assert_eq!(row.get::<uint, i32>(0), 2);
                     //TODO let addr = q.get_text(2);
                     // assert_eq!(addr.as_slice(), "345 e Walnut");
@@ -297,7 +303,7 @@ mod bind_tests {
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
         let mut db = try!(DatabaseConnection::new());
         let mut s = try!(db.prepare(sql));
-        let mut rows = try!(s.query([]));
+        let mut rows = s.execute();
         Ok(f(&mut rows))
     }
 
@@ -312,7 +318,7 @@ mod bind_tests {
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Row(ref mut row) => {
+                        Some(Ok(ref mut row)) => {
                             count += 1;
                             sum += row.get("col1")
                         },
