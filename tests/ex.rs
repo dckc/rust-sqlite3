@@ -5,7 +5,6 @@ use time::Timespec;
 
 
 use sqlite3::{DatabaseConnection, SqliteResult};
-use sqlite3::{SQLITE_NULL, SQLITE_TEXT};
 
 #[deriving(Show)]
 struct Person {
