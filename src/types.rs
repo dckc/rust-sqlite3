@@ -93,6 +93,7 @@ pub static time_fmt: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     /// TODO: propagate error message
+    #[allow(unused_variable)]
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
             None => Err(SQLITE_MISMATCH),
