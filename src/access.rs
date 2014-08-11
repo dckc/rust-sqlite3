@@ -27,13 +27,13 @@ use ffi;
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
 pub fn open(filename: String) -> SqliteResult<DatabaseConnection> {
-    DatabaseConnection::connect(filename_access(filename))
+    DatabaseConnection::new(filename_access(filename))
 }
 
 /// Create authorization to open a file as a database.
 ///
 /// *The resulting proc() allocates an `sqlite3` structure
-/// that is intended to be passed to `DatabaseConnection::connect`.
+/// that is intended to be passed to `DatabaseConnection::new`.
 /// Failure to do would result in a memory leak.*
 ///
 /// *TODO: mark this unsafe?*
@@ -55,7 +55,7 @@ mod tests {
 
     #[test]
     fn open_file_db() {
-        DatabaseConnection::connect(filename_access("/tmp/db1".to_string())).unwrap();
+        DatabaseConnection::new(filename_access("/tmp/db1".to_string())).unwrap();
     }
 }
 

@@ -3,7 +3,7 @@ extern crate sqlite3;
 use sqlite3::{DatabaseConnection, SqliteResult};
 
 fn convenience_exec() -> SqliteResult<DatabaseConnection> {
-    let mut conn = try!(DatabaseConnection::new());
+    let mut conn = try!(DatabaseConnection::in_memory());
 
     try!(conn.exec("
        create table items (

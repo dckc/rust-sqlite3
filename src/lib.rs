@@ -27,7 +27,7 @@
 //! }
 //!
 //! fn io() -> SqliteResult<Vec<Person>> {
-//!     let mut conn = try!(DatabaseConnection::new());
+//!     let mut conn = try!(DatabaseConnection::in_memory());
 //!
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
@@ -237,7 +237,7 @@ mod bind_tests {
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(DatabaseConnection::new());
+            let mut database = try!(DatabaseConnection::in_memory());
 
             try!(database.exec(
                 "BEGIN;
@@ -284,7 +284,7 @@ mod bind_tests {
     }
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::new());
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))

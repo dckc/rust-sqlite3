@@ -11,7 +11,7 @@
 //! use sqlite3::{DatabaseConnection, SqliteResult};
 //!
 //! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
-//!     let mut conn = try!(DatabaseConnection::new());
+//!     let mut conn = try!(DatabaseConnection::in_memory());
 //!
 //!     try!(conn.exec("
 //!        create table items (
@@ -155,25 +155,11 @@ impl Drop for DatabaseConnection {
 pub type Access = proc(*mut *mut ffi::sqlite3) -> c_int;
 
 impl DatabaseConnection {
-    /// Create connection to an in-memory database.
-    ///
-    ///  - TODO: use support _v2 interface with flags
-    ///  - TODO: integrate sqlite3_errmsg()
-    pub fn new() -> SqliteResult<DatabaseConnection> {
-        fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
-            let result = ":memory:".with_c_str({
-                |memory| unsafe { ffi::sqlite3_open(memory, db) }
-            });
-            result
-        }
-        DatabaseConnection::connect(in_memory)
-    }
-
     /// Given explicit access to a database, attempt to connect to it.
     ///
     /// *TODO: mark this unsafe?*
     #[allow(visible_private_types)]
-    pub fn connect(open: Access) -> SqliteResult<DatabaseConnection> {
+    pub fn new(open: Access) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::mut_null();
         let result = open(&mut db);
         match decode_result(result, "sqlite3_open") {
@@ -187,6 +173,20 @@ impl DatabaseConnection {
                 Err(err)
             }
         }
+    }
+
+    /// Create connection to an in-memory database.
+    ///
+    ///  - TODO: use support _v2 interface with flags
+    ///  - TODO: integrate sqlite3_errmsg()
+    pub fn in_memory() -> SqliteResult<DatabaseConnection> {
+        fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
+            let result = ":memory:".with_c_str({
+                |memory| unsafe { ffi::sqlite3_open(memory, db) }
+            });
+            result
+        }
+        DatabaseConnection::new(in_memory)
     }
 
     /// Prepare/compile an SQL statement.
@@ -506,13 +506,13 @@ mod tests {
 
     #[test]
     fn db_new_types() {
-        DatabaseConnection::new().unwrap();
+        DatabaseConnection::in_memory().unwrap();
     }
 
     #[test]
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::new());
+            let mut db = try!(DatabaseConnection::in_memory());
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
@@ -520,7 +520,7 @@ mod tests {
 
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::new());
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))

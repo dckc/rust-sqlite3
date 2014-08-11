@@ -22,7 +22,7 @@ pub fn main() {
 }
 
 fn io() -> SqliteResult<Vec<Person>> {
-    let mut conn = try!(DatabaseConnection::new());
+    let mut conn = try!(DatabaseConnection::in_memory());
 
     try!(conn.exec("CREATE TABLE person (
                  id              SERIAL PRIMARY KEY,
