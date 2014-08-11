@@ -47,19 +47,13 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let mut ppl = vec!();
     try!(stmt.query(
-        [],
-        |row| {
-            assert_eq!(row.column_type(0), SQLITE_NULL);
-            assert_eq!(row.column_type(1), SQLITE_TEXT);
-            assert_eq!(row.column_type(2), SQLITE_TEXT);
-            
-            Ok(Person {
+        [], |row| {
+            ppl.push(Person {
                 id: row.get(0u),
                 name: row.get(1u),
                 time_created: row.get(2u)
-            })
-        },
-        (),
-        |_, person| { ppl.push(person) }));
+            });
+            Ok(())
+        }));
     Ok(ppl)
 }

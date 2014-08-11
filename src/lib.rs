@@ -51,16 +51,14 @@
 //!
 //!     let mut ppl = vec!();
 //!     try!(stmt.query(
-//!         [],
-//!         |row| {
-//!             Ok(Person {
+//!         [], |row| {
+//!             ppl.push(Person {
 //!                 id: row.get(0u),
 //!                 name: row.get(1u),
 //!                 time_created: row.get(2u)
-//!             })
-//!         },
-//!         (),
-//!         |_, person| { ppl.push(person) }));
+//!             });
+//!             Ok(())
+//!         }));
 //!     Ok(ppl)
 //! }
 //! ```
@@ -111,27 +109,21 @@ impl core::DatabaseConnection {
 }
 
 impl<'s> core::PreparedStatement<'s> {
-    /// Fold query results, after binding parameters.
-    pub fn query<T, U>(&'s mut self,
-                       values: &[&ToSql],
-                       each_row: |&mut ResultRow|: 's -> SqliteResult<T>,
-                       init: U,
-                       accum: |U, T| -> U
-                       ) -> SqliteResult<U> {
+    /// Process rows from a query after binding parameters.
+    pub fn query(&'s mut self,
+                 values: &[&ToSql],
+                 each_row: |&mut ResultRow|: 's -> SqliteResult<()>
+                 ) -> SqliteResult<()> {
         try!(bind_values(self, values));
         let mut results = self.execute();
-        let mut acc = init;
         loop {
             match results.step() {
                 None => break,
-                Some(Ok(ref mut row)) => match each_row(row) {
-                    Ok(t) => acc = accum(acc, t),
-                    Err(e) => return Err(e)
-                },
+                Some(Ok(ref mut row)) => try!(each_row(row)),
                 Some(Err(e)) => return Err(e)
             }
         }
-        Ok(acc)
+        Ok(())
     }
 }
 
