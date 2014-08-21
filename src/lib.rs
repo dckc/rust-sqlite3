@@ -9,7 +9,7 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult};
+//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -26,9 +26,12 @@
 //!     }
 //! }
 //!
-//! fn io() -> SqliteResult<Vec<Person>> {
+//! fn io() -> Result<Vec<Person>, (SqliteError, String)> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
+//!     with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+//! }
 //!
+//! fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
@@ -72,6 +75,7 @@ extern crate time;
 
 use std::fmt::Show;
 
+pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 pub use types::{FromSql, ToSql};
 
@@ -237,7 +241,8 @@ mod bind_tests {
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(DatabaseConnection::in_memory());
+            let mut database = try!(DatabaseConnection::in_memory()
+                                    .map_err(|(code, _msg)| code));
 
             try!(database.exec(
                 "BEGIN;
@@ -284,7 +289,8 @@ mod bind_tests {
     }
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory());
+        let mut db = try!(DatabaseConnection::in_memory()
+                          .map_err(|(code, _msg)| code));
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))

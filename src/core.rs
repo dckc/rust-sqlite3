@@ -8,9 +8,9 @@
 //! ```rust
 //! extern crate sqlite3;
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult};
+//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
 //!
-//! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
+//! fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
 //!
 //!     try!(conn.exec("
@@ -18,7 +18,8 @@
 //!                    id integer,
 //!                    description varchar(40),
 //!                    price integer
-//!                    )"));
+//!                    )")
+//!        .map_err(|code| (code, conn.errmsg())));
 //!
 //!     Ok(conn)
 //!  }
@@ -159,18 +160,21 @@ impl DatabaseConnection {
     ///
     /// *TODO: mark this unsafe?*
     #[allow(visible_private_types)]
-    pub fn new(open: Access) -> SqliteResult<DatabaseConnection> {
+    pub fn new(open: Access) -> Result<DatabaseConnection, (SqliteError, String)> {
         let mut db = ptr::mut_null();
         let result = open(&mut db);
         match decode_result(result, "sqlite3_open") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
+                let msg = DatabaseConnection::_errmsg(db);
+
                 // "Whether or not an error occurs when it is opened,
                 // resources associated with the database connection
                 // handle should be released by passing it to
                 // sqlite3_close() when it is no longer required."
                 unsafe { ffi::sqlite3_close(db) };
-                Err(err)
+
+                Err((err, msg))
             }
         }
     }
@@ -179,7 +183,7 @@ impl DatabaseConnection {
     ///
     ///  - TODO: use support _v2 interface with flags
     ///  - TODO: integrate sqlite3_errmsg()
-    pub fn in_memory() -> SqliteResult<DatabaseConnection> {
+    pub fn in_memory() -> Result<DatabaseConnection, (SqliteError, String)> {
         fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
             let result = ":memory:".with_c_str({
                 |memory| unsafe { ffi::sqlite3_open(memory, db) }
@@ -218,7 +222,11 @@ impl DatabaseConnection {
     }
 
     pub fn errmsg(&mut self) -> String {
-        let result = unsafe { ffi::sqlite3_errmsg(self.db) };
+        DatabaseConnection::_errmsg(self.db)
+    }
+
+    fn _errmsg(db: *mut ffi::sqlite3) -> String {
+        let result = unsafe { ffi::sqlite3_errmsg(db) };
         if result == ptr::null() {
             // returning Option<String> doesn't seem worthwhile.
             "".to_string()
@@ -501,18 +509,26 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
 
 
 #[cfg(test)]
+mod test_opening {
+    use super::{DatabaseConnection};
+
+    #[test]
+    fn db_construct_typechecks() {
+        assert!(DatabaseConnection::in_memory().is_ok())
+    }
+
+    // TODO: _v2 with flags
+}
+
+#[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
 
     #[test]
-    fn db_new_types() {
-        DatabaseConnection::in_memory().unwrap();
-    }
-
-    #[test]
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::in_memory());
+            let mut db = try!(DatabaseConnection::in_memory()
+                              .map_err(|(code, _msg)| code));
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
@@ -520,7 +536,8 @@ mod tests {
 
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory());
+        let mut db = try!(DatabaseConnection::in_memory()
+                          .map_err(|(code, _msg)| code));
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))
