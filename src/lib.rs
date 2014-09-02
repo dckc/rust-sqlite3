@@ -70,6 +70,8 @@
 #![crate_type = "lib"]
 #![feature(unsafe_destructor,unboxed_closures)]
 
+#![allow(non_snake_case)]
+
 extern crate libc;
 extern crate time;
 
