@@ -417,7 +417,7 @@ impl<'s> ResultSet<'s> {
 
 
 /// Access to columns of a row.
-pub struct ResultRow<'s, 'r> {
+pub struct ResultRow<'s: 'r, 'r> {
     rows: &'r mut ResultSet<'s>
 }
 
