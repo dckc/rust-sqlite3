@@ -153,7 +153,7 @@ impl Drop for DatabaseConnection {
 /// Authorization to connect to database.
 ///
 /// *TODO: mark this unsafe?*
-pub type Access = proc(*mut *mut ffi::sqlite3) -> c_int;
+pub type Access = Box<FnOnce<(*mut *mut ffi::sqlite3,), c_int> + 'static>;
 
 impl DatabaseConnection {
     /// Given explicit access to a database, attempt to connect to it.
@@ -162,7 +162,7 @@ impl DatabaseConnection {
     #[allow(visible_private_types)]
     pub fn new(open: Access) -> Result<DatabaseConnection, (SqliteError, String)> {
         let mut db = ptr::mut_null();
-        let result = open(&mut db);
+        let result = open.call_once((&mut db,));
         match decode_result(result, "sqlite3_open") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
@@ -190,7 +190,7 @@ impl DatabaseConnection {
             });
             result
         }
-        DatabaseConnection::new(in_memory)
+        DatabaseConnection::new(box |: db| in_memory(db))
     }
 
     /// Prepare/compile an SQL statement.
