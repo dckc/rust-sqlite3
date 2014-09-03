@@ -70,8 +70,6 @@
 #![crate_type = "lib"]
 #![feature(unsafe_destructor,unboxed_closures)]
 
-#![allow(non_snake_case)]
-
 extern crate libc;
 extern crate time;
 
@@ -85,7 +83,8 @@ pub mod core;
 pub mod types;
 
 /// bindgen-bindings to libsqlite3
-#[allow(non_camel_case_types, dead_code)]
+#[allow(non_camel_case_types, non_snake_case)]
+#[allow(dead_code)]
 pub mod ffi;
 
 pub mod access;
