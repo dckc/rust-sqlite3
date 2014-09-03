@@ -9,8 +9,6 @@
 env:
   global:
     - secure: Ec6ZjLg8P0hLYZf2rBzTcGKidavRNzBSuYr1dxuB4OD/X5z9LToSBNomAnxIeBEU7kQKlnYTJUW34bcd6IVt0PlYm/JT3Ij4RBIUwHjWTnyH2GObmtUfDsoxeaSROCWsoogWNG1tGYp23iTHaVqcKMOWLpcZtmzYYnlTCPNSHmo=
-install:
-  - curl http://www.rust-lang.org/rustup.sh | sudo sh -
 script:
   - cargo build
   - cargo test
