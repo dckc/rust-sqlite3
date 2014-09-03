@@ -32,14 +32,14 @@ pub fn open(filename: String) -> Result<DatabaseConnection, (SqliteError, String
 
 /// Create authorization to open a file as a database.
 ///
-/// *The resulting proc() allocates an `sqlite3` structure
+/// *The resulting FnOnce allocates an `sqlite3` structure
 /// that is intended to be passed to `DatabaseConnection::new`.
 /// Failure to do would result in a memory leak.*
 ///
 /// *TODO: mark this unsafe?*
 #[unstable]
 pub fn filename_access(filename: String) -> Access {
-    proc(db: *mut *mut ffi::sqlite3) -> c_int {
+    box |: db| -> c_int {
         filename.with_c_str({
             |filename| unsafe { ffi::sqlite3_open(filename, db) }
         })

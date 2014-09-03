@@ -9,7 +9,7 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
+//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError, ToSql};
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -46,7 +46,7 @@
 //!     {
 //!         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
 //!                            VALUES ($1, $2)"));
-//!         let changes = try!(conn.update(&mut tx, [&me.name, &me.time_created]));
+//!         let changes = try!(conn.update(&mut tx, [&me.name as &ToSql, &me.time_created as &ToSql]));
 //!         assert_eq!(changes, 1);
 //!     }
 //!
@@ -68,7 +68,9 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(unsafe_destructor)]
+#![feature(unsafe_destructor,unboxed_closures)]
+
+#![allow(non_snake_case)]
 
 extern crate libc;
 extern crate time;
