@@ -6,13 +6,13 @@
 # See also:
 #  - http://www.rust-ci.org/p/390/artifactconf
 
+language: rust
 env:
   global:
     - secure: Ec6ZjLg8P0hLYZf2rBzTcGKidavRNzBSuYr1dxuB4OD/X5z9LToSBNomAnxIeBEU7kQKlnYTJUW34bcd6IVt0PlYm/JT3Ij4RBIUwHjWTnyH2GObmtUfDsoxeaSROCWsoogWNG1tGYp23iTHaVqcKMOWLpcZtmzYYnlTCPNSHmo=
 script:
   - cargo build
   - cargo test
-  - rustdoc -L target --test src/lib.rs
   - cargo doc --no-deps
 after_script:
   - mv target/doc .
