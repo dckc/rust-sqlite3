@@ -124,6 +124,7 @@ impl FromSql for time::Timespec {
 mod tests {
     use time::Tm;
     use super::super::{DatabaseConnection, SqliteResult};
+    use super::super::{ResultRowAccess};
 
     #[test]
     fn get_tm() {

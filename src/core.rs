@@ -523,6 +523,7 @@ mod test_opening {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
+    use super::super::{ResultRowAccess};
 
     #[test]
     fn stmt_new_types() {
