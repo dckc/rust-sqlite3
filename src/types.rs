@@ -89,7 +89,7 @@ impl FromSql for String {
 /// From [Date And Time Functions][lang_datefunc]:
 /// > The datetime() function returns "YYYY-MM-DD HH:MM:SS"
 /// [lang_datefunc]: http://www.sqlite.org/lang_datefunc.html
-pub static time_fmt: &'static str = "%F %T";
+pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     /// TODO: propagate error message
@@ -97,7 +97,7 @@ impl FromSql for time::Tm {
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
             None => Err(SQLITE_MISMATCH),
-            Some(txt) => match time::strptime(txt.as_slice(), time_fmt) {
+            Some(txt) => match time::strptime(txt.as_slice(), SQLITE_TIME_FMT) {
                 Ok(tm) => Ok(tm),
                 Err(msg) => Err(SQLITE_MISMATCH)
             }
@@ -108,7 +108,7 @@ impl FromSql for time::Tm {
 
 impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
-        s.bind_text(ix, time::at_utc(*self).strftime(time_fmt).as_slice())
+        s.bind_text(ix, time::at_utc(*self).strftime(SQLITE_TIME_FMT).as_slice())
     }
 }
 

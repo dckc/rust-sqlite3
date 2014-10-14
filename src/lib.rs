@@ -9,7 +9,9 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
+//! use sqlite3::{DatabaseConnection, DatabaseUpdate,
+//!               Query, ResultRowAccess,
+//!               SqliteResult, SqliteError};
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -154,7 +156,7 @@ fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteR
 }
 
 
-trait ResultRowAccess {
+pub trait ResultRowAccess {
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
     fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
