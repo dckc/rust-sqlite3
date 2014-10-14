@@ -70,7 +70,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(unsafe_destructor,unboxed_closures)]
+#![feature(unsafe_destructor)]
 
 extern crate libc;
 extern crate time;

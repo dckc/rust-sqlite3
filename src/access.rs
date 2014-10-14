@@ -27,20 +27,21 @@ use ffi;
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
 pub fn open(filename: String) -> Result<DatabaseConnection, (SqliteError, String)> {
-    DatabaseConnection::new(filename_access(filename))
+    DatabaseConnection::new(ByFilename { filename: filename })
 }
 
-/// Create authorization to open a file as a database.
+/// Access to a database by filename
 ///
 /// *The resulting FnOnce allocates an `sqlite3` structure
 /// that is intended to be passed to `DatabaseConnection::new`.
 /// Failure to do would result in a memory leak.*
-///
-/// *TODO: mark this unsafe?*
-#[unstable]
-pub fn filename_access(filename: String) -> Access {
-    box |: db| -> c_int {
-        filename.with_c_str({
+pub struct ByFilename {
+    pub filename: String
+}
+
+impl Access for ByFilename {
+    fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
+        self.filename.with_c_str({
             |filename| unsafe { ffi::sqlite3_open(filename, db) }
         })
     }
@@ -50,12 +51,12 @@ pub fn filename_access(filename: String) -> Access {
 
 #[cfg(test)]
 mod tests {
-    use super::filename_access;
+    use super::ByFilename;
     use core::DatabaseConnection;
 
     #[test]
     fn open_file_db() {
-        DatabaseConnection::new(filename_access("/tmp/db1".to_string())).unwrap();
+        DatabaseConnection::new(ByFilename { filename: "/tmp/db1".to_string() }).unwrap();
     }
 }
 

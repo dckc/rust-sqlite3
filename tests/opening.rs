@@ -2,7 +2,8 @@ extern crate sqlite3;
 
 use std::os;
 
-use sqlite3::{DatabaseConnection, DatabaseUpdate,
+use sqlite3::{Access,
+              DatabaseConnection, DatabaseUpdate,
               Query, ResultRowAccess,
               SqliteResult, SqliteError};
 use sqlite3::access;
@@ -15,7 +16,7 @@ struct Person {
 
 pub fn main() {
     let db = os::args()[1].clone(); // TODO: no I/O in main
-    let access = access::filename_access(db);
+    let access = access::ByFilename { filename: db };
 
     match io(access) {
         Ok(x) => println!("Ok: {}", x),
@@ -23,7 +24,7 @@ pub fn main() {
     }
 }
 
-fn io(access: sqlite3::Access) -> Result<Vec<Person>, (SqliteError, String)> {
+fn io<A: sqlite3::Access>(access: A) -> Result<Vec<Person>, (SqliteError, String)> {
     match DatabaseConnection::new(access) {
         Ok(ref mut conn) => match io2(conn) {
             Ok(ppl) => Ok(ppl),

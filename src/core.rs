@@ -151,17 +151,15 @@ impl Drop for DatabaseConnection {
 
 
 /// Authorization to connect to database.
-///
-/// *TODO: mark this unsafe?*
-pub type Access = Box<FnOnce<(*mut *mut ffi::sqlite3,), c_int> + 'static>;
+pub trait Access {
+    fn open(self, db: *mut *mut ffi::sqlite3) -> c_int;
+}
 
 impl DatabaseConnection {
     /// Given explicit access to a database, attempt to connect to it.
-    ///
-    /// *TODO: mark this unsafe?*
-    pub fn new(open: Access) -> Result<DatabaseConnection, (SqliteError, String)> {
+    pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, (SqliteError, String)> {
         let mut db = ptr::null_mut();
-        let result = open.call_once((&mut db,));
+        let result = access.open(&mut db);
         match decode_result(result, "sqlite3_open") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
@@ -183,13 +181,15 @@ impl DatabaseConnection {
     ///  - TODO: use support _v2 interface with flags
     ///  - TODO: integrate sqlite3_errmsg()
     pub fn in_memory() -> Result<DatabaseConnection, (SqliteError, String)> {
-        fn in_memory(db: *mut *mut ffi::sqlite3) -> c_int {
-            let result = ":memory:".with_c_str({
-                |memory| unsafe { ffi::sqlite3_open(memory, db) }
-            });
-            result
+        struct InMemory;
+        impl Access for InMemory {
+            fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
+                ":memory:".with_c_str({
+                    |memory| unsafe { ffi::sqlite3_open(memory, db) }
+                })
+            }
         }
-        DatabaseConnection::new(box |: db| in_memory(db))
+        DatabaseConnection::new(InMemory)
     }
 
     /// Prepare/compile an SQL statement.
