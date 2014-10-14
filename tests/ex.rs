@@ -4,7 +4,9 @@ extern crate sqlite3;
 use time::Timespec;
 
 
-use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
+use sqlite3::{DatabaseConnection, DatabaseUpdate,
+              Query, ResultRowAccess,
+              SqliteResult, SqliteError};
 
 #[deriving(Show)]
 struct Person {

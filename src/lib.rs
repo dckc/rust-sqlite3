@@ -9,7 +9,9 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
+//! use sqlite3::{DatabaseConnection, DatabaseUpdate,
+//!               Query, ResultRowAccess,
+//!               SqliteResult, SqliteError};
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -89,17 +91,23 @@ pub mod ffi;
 
 pub mod access;
 
+pub trait DatabaseUpdate {
+    fn update<'db, 's>(&'db mut self,
+                       stmt: &'s mut PreparedStatement<'s>,
+                       values: &[&ToSql]) -> SqliteResult<uint>;
+}
 
-impl core::DatabaseConnection {
+
+impl DatabaseUpdate for core::DatabaseConnection {
     /// Execute a statement after binding any parameters.
     ///
     /// When the statement is done, The [number of rows
     /// modified][changes] is reported.
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    pub fn update<'db, 's>(&'db mut self,
-                           stmt: &'s mut PreparedStatement<'s>,
-                           values: &[&ToSql]) -> SqliteResult<uint> {
+    fn update<'db, 's>(&'db mut self,
+                       stmt: &'s mut PreparedStatement<'s>,
+                       values: &[&ToSql]) -> SqliteResult<uint> {
         let check = {
             try!(bind_values(stmt, values));
             let mut results = stmt.execute();
@@ -113,12 +121,20 @@ impl core::DatabaseConnection {
     }
 }
 
-impl<'s> core::PreparedStatement<'s> {
+
+pub trait Query<'s> {
+    fn query(&'s mut self,
+             values: &[&ToSql],
+             each_row: |&mut ResultRow|: 's -> SqliteResult<()>
+             ) -> SqliteResult<()>;
+}
+
+impl<'s> Query<'s> for core::PreparedStatement<'s> {
     /// Process rows from a query after binding parameters.
-    pub fn query(&'s mut self,
-                 values: &[&ToSql],
-                 each_row: |&mut ResultRow|: 's -> SqliteResult<()>
-                 ) -> SqliteResult<()> {
+    fn query(&'s mut self,
+             values: &[&ToSql],
+             each_row: |&mut ResultRow|: 's -> SqliteResult<()>
+             ) -> SqliteResult<()> {
         try!(bind_values(self, values));
         let mut results = self.execute();
         loop {
@@ -140,15 +156,20 @@ fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteR
 }
 
 
-impl<'s, 'r> core::ResultRow<'s, 'r> {
-    pub fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
+pub trait ResultRowAccess {
+    fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
+    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
+}
+
+impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
+    fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
             Err(err) => fail!("retrieving column {}: {}", idx, err)
         }
     }
 
-    pub fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
+    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
             None => Err(SQLITE_MISUSE)
@@ -237,6 +258,7 @@ pub enum ColumnType {
 #[cfg(test)]
 mod bind_tests {
     use super::{DatabaseConnection, ResultSet};
+    use super::{ResultRowAccess};
     use super::{SqliteResult};
 
     #[test]

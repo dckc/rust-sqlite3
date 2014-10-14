@@ -159,9 +159,8 @@ impl DatabaseConnection {
     /// Given explicit access to a database, attempt to connect to it.
     ///
     /// *TODO: mark this unsafe?*
-    #[allow(visible_private_types)]
     pub fn new(open: Access) -> Result<DatabaseConnection, (SqliteError, String)> {
-        let mut db = ptr::mut_null();
+        let mut db = ptr::null_mut();
         let result = open.call_once((&mut db,));
         match decode_result(result, "sqlite3_open") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
@@ -207,7 +206,7 @@ impl DatabaseConnection {
     /// return a &'x str?*
     pub fn prepare_with_offset<'db>(&'db mut self, sql: &str)
                                     -> SqliteResult<(PreparedStatement<'db>, uint)> {
-        let mut stmt = ptr::mut_null();
+        let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
         let z_sql = sql.as_ptr() as *const ::libc::c_char;
         let n_byte = sql.len() as c_int;
@@ -250,7 +249,7 @@ impl DatabaseConnection {
         let db = self.db;
         let result = sql.with_c_str(
             |c_sql| unsafe { ffi::sqlite3_exec(db, c_sql, None,
-                                               ptr::mut_null(), ptr::mut_null()) });
+                                               ptr::null_mut(), ptr::null_mut()) });
         decode_result(result, "sqlite3_exec")
     }
 
@@ -523,6 +522,7 @@ mod test_opening {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
+    use super::super::{ResultRowAccess};
 
     #[test]
     fn stmt_new_types() {
