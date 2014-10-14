@@ -9,13 +9,12 @@
 language: rust
 env:
   global:
-    - secure: Ec6ZjLg8P0hLYZf2rBzTcGKidavRNzBSuYr1dxuB4OD/X5z9LToSBNomAnxIeBEU7kQKlnYTJUW34bcd6IVt0PlYm/JT3Ij4RBIUwHjWTnyH2GObmtUfDsoxeaSROCWsoogWNG1tGYp23iTHaVqcKMOWLpcZtmzYYnlTCPNSHmo=
+    - secure: eaw/De/05/yXkxnoeXzHzmbD1KVN3+6W2M5NRQH7Yxm8ep2WD4DUpUpa/bQy5VzwgDoptVIfvKBliLQrbtKkEZZAFvIr3x0bm431hB5y6kj3wbWazsSJ7RU0mYksaraDdCnQXxsqmz/oWGGOFgy7+UAkeOktx60+x6/wqbYYKRk=
 script:
   - cargo build
   - cargo test
   - cargo doc --no-deps
 after_script:
-  - mv target/doc .
   - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
 
 
