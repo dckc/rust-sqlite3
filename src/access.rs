@@ -26,7 +26,7 @@ use ffi;
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
-pub fn open(filename: String) -> Result<DatabaseConnection, (SqliteError, String)> {
+pub fn open(filename: &str) -> Result<DatabaseConnection, (SqliteError, String)> {
     DatabaseConnection::new(ByFilename { filename: filename })
 }
 
@@ -35,11 +35,11 @@ pub fn open(filename: String) -> Result<DatabaseConnection, (SqliteError, String
 /// *The resulting FnOnce allocates an `sqlite3` structure
 /// that is intended to be passed to `DatabaseConnection::new`.
 /// Failure to do would result in a memory leak.*
-pub struct ByFilename {
-    pub filename: String
+pub struct ByFilename<'a> {
+    pub filename: &'a str
 }
 
-impl Access for ByFilename {
+impl<'a> Access for ByFilename<'a> {
     fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
         self.filename.with_c_str({
             |filename| unsafe { ffi::sqlite3_open(filename, db) }
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn open_file_db() {
-        DatabaseConnection::new(ByFilename { filename: "/tmp/db1".to_string() }).unwrap();
+        DatabaseConnection::new(ByFilename { filename: "/tmp/db1" }).unwrap();
     }
 }
 
