@@ -5,7 +5,9 @@ use super::{SqliteResult, SQLITE_MISMATCH};
 use super::{SQLITE_NULL};
 use time;
 
+/// Values that can be bound to parameters in prepared statements.
 pub trait ToSql {
+    /// Bind the `ix`th parameter to this value (`self`).
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()>;
 }
 
@@ -17,9 +19,10 @@ pub trait ToSql {
 ///
 /// [column]: http://www.sqlite.org/c3ref/column_blob.html
 ///
-///   - TODO: consider a `types` submodule
-///   - TODO: many more implementors, including Option<T>
+///   - *TODO: consider a `types` submodule*
+///   - *TODO: many more implementors, including Option<T>*
 pub trait FromSql {
+    /// Try to extract a `Self` type value from the `col`th colum of a `ResultRow`.
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<Self>;
 }
 

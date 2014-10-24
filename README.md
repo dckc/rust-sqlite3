@@ -39,7 +39,6 @@ have not used the library beyond trivial integration tests.
   - `ToSql`/`FromSql` can now be implemented by clients,
     but the `types` module probably doesn't hit the 80% mark yet;
     e.g. it's missing uint and &[u8].
-  - turn on warnings for missing documentation
   - investigate test coverage tools for rust
   - basic benchmarking
 

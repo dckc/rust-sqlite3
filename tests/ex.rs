@@ -53,8 +53,8 @@ fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
     try!(stmt.query(
         [], |row| {
             ppl.push(Person {
-                id: row.get(0u),
-                name: row.get(1u),
+                id: row.get("id"),
+                name: row.get("name"),
                 time_created: row.get(2u)
             });
             Ok(())

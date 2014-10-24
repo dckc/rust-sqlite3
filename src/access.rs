@@ -31,11 +31,8 @@ pub fn open(filename: &str) -> Result<DatabaseConnection, (SqliteError, String)>
 }
 
 /// Access to a database by filename
-///
-/// *The resulting FnOnce allocates an `sqlite3` structure
-/// that is intended to be passed to `DatabaseConnection::new`.
-/// Failure to do would result in a memory leak.*
 pub struct ByFilename<'a> {
+    /// Filename or sqlite3 style URI.
     pub filename: &'a str
 }
 

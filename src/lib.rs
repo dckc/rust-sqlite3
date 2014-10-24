@@ -2,6 +2,19 @@
 //!
 //! [sqlite3 API]: http://www.sqlite.org/c3ref/intro.html
 //!
+//! Three layers of API are provided:
+//!
+//!  - `mod ffi` provides exhaustive, though unsafe, [bindgen] bindings for `libsqlite.h`.
+//!  - `mod core` provides a minimal safe interface to the basic sqlite3 API.
+//!  - `mod types` provides `ToSql`/`FromSql` traits, and the library provides
+//!     convenient `query()` and `update()` APIs.
+//!
+//! [bindgen]: https://github.com/crabtw/rust-bindgen
+//!
+//! The following example demonstrates opening a database, executing
+//! DDL, and using the high-level `query()` and `update()` API. Note the
+//! use of `Result` and `try!()` for error handling.
+//!
 //! ```rust
 //! extern crate time;
 //! extern crate sqlite3;
@@ -58,8 +71,8 @@
 //!     try!(stmt.query(
 //!         [], |row| {
 //!             ppl.push(Person {
-//!                 id: row.get(0u),
-//!                 name: row.get(1u),
+//!                 id: row.get("id"),
+//!                 name: row.get("name"),
 //!                 time_created: row.get(2u)
 //!             });
 //!             Ok(())
@@ -71,6 +84,7 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 #![feature(unsafe_destructor)]
+#![warn(missing_doc)]
 
 extern crate libc;
 extern crate time;
@@ -87,11 +101,14 @@ pub mod types;
 /// bindgen-bindings to libsqlite3
 #[allow(non_camel_case_types, non_snake_case)]
 #[allow(dead_code)]
+#[allow(missing_doc)]
 pub mod ffi;
 
 pub mod access;
 
+/// Mix in `update()` convenience function.
 pub trait DatabaseUpdate {
+    /// Execute a statement after binding any parameters.
     fn update<'db, 's>(&'db mut self,
                        stmt: &'s mut PreparedStatement<'s>,
                        values: &[&ToSql]) -> SqliteResult<uint>;
@@ -103,6 +120,10 @@ impl DatabaseUpdate for core::DatabaseConnection {
     ///
     /// When the statement is done, The [number of rows
     /// modified][changes] is reported.
+    ///
+    /// Fail with `Err(SQLITE_MISUSE)` in case the statement results
+    /// in any any rows (e.g. a `SELECT` rather than `INSERT` or
+    /// `UPDATE`).
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
     fn update<'db, 's>(&'db mut self,
@@ -122,7 +143,9 @@ impl DatabaseUpdate for core::DatabaseConnection {
 }
 
 
+/// Mix in `query()` convenience function.
 pub trait Query<'s> {
+    /// Process rows from a query after binding parameters.
     fn query(&'s mut self,
              values: &[&ToSql],
              each_row: |&mut ResultRow|: 's -> SqliteResult<()>
@@ -131,6 +154,9 @@ pub trait Query<'s> {
 
 impl<'s> Query<'s> for core::PreparedStatement<'s> {
     /// Process rows from a query after binding parameters.
+    ///
+    /// For call `each_row(row)` for each resulting step,
+    /// exiting on `Err`.
     fn query(&'s mut self,
              values: &[&ToSql],
              each_row: |&mut ResultRow|: 's -> SqliteResult<()>
@@ -156,8 +182,16 @@ fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteR
 }
 
 
+/// Access result columns of a row by name or numeric index.
 pub trait ResultRowAccess {
+    /// Get `T` type result value from `idx`th column of a row.
+    ///
+    /// # Failure
+    ///
+    /// Fails if there is no such column or value.
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
+
+    /// Try to get `T` type result value from `idx`th column of a row.
     fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
@@ -183,14 +217,20 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
 /// *inspired by sfackler's [RowIndex][]*
 /// [RowIndex]: http://www.rust-ci.org/sfackler/rust-postgres/doc/postgres/trait.RowIndex.html
 pub trait RowIndex {
+    /// Try to convert `self` to an index into a row.
     fn idx(&self, row: &mut ResultRow) -> Option<uint>;
 }
 
 impl RowIndex for uint {
+    /// Index into a row directly by uint.
     fn idx(&self, _row: &mut ResultRow) -> Option<uint> { Some(*self) }
 }
 
 impl RowIndex for &'static str {
+    /// Index into a row by column name.
+    ///
+    /// *TODO: figure out how to use lifetime of row rather than
+    /// `static`.*
     fn idx(&self, row: &mut ResultRow) -> Option<uint> {
         let mut ixs = range(0, row.column_count());
         ixs.find(|ix| row.with_column_name(*ix, false, |name| name == *self))
@@ -214,6 +254,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
+#[allow(missing_doc)]
 pub enum SqliteError {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
@@ -244,8 +285,10 @@ pub enum SqliteError {
 }
 
 
+/// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
+#[allow(missing_doc)]
 pub enum ColumnType {
     SQLITE_INTEGER = 1,
     SQLITE_FLOAT   = 2,
