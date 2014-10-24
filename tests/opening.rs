@@ -16,7 +16,7 @@ struct Person {
 
 pub fn main() {
     let db = os::args()[1].clone(); // TODO: no I/O in main
-    let access = access::ByFilename { filename: db };
+    let access = access::ByFilename { filename: db.as_slice() };
 
     match io(access) {
         Ok(x) => println!("Ok: {}", x),
