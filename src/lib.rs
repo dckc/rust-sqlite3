@@ -179,6 +179,9 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
 }
 
 fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
+    if values.len() < s.bind_parameter_count() { // may be useful when a value is missing but pedantic when intentional
+        return Err(SQLITE_MISUSE);
+    }
     for (ix, v) in values.iter().enumerate() {
         try!(v.to_sql(s, ix + 1));
     }
