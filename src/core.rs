@@ -291,8 +291,7 @@ impl DatabaseConnection {
     ///
     /// cf `sqlite3_last_insert_rowid`
     pub fn last_insert_rowid(&self) -> i64 {
-        let db = self.db;
-        unsafe { ffi::sqlite3_last_insert_rowid(db) }
+        unsafe { ffi::sqlite3_last_insert_rowid(self.db) }
     }
 
     /// Expose the underlying `sqlite3` struct pointer for use
@@ -400,6 +399,13 @@ impl<'db> PreparedStatement<'db> {
     pub fn clear_bindings(&'db mut self) {
         // We ignore the return value, since no return codes are documented.
         unsafe { ffi::sqlite3_clear_bindings(self.stmt) };
+    }
+
+    /// Return the number of SQL parameters.
+    /// If parameters of the ?NNN form are used, there may be gaps in the list.
+    pub fn bind_parameter_count(&'db mut self) -> uint {
+        let count = unsafe { ffi::sqlite3_bind_parameter_count(self.stmt) };
+        count as uint
     }
 
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
