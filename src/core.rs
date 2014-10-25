@@ -99,6 +99,7 @@ use std::num::from_i32;
 use std::ptr;
 use std::mem;
 use std::c_str;
+use std::time::Duration;
 
 pub use super::{SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
 
@@ -286,6 +287,14 @@ impl DatabaseConnection {
         let db = self.db;
         let count = unsafe { ffi::sqlite3_changes(db) };
         count as uint
+    }
+
+    /// Set a busy timeout and clear any previously set handler.
+    /// If duration is zero or negative, turns off busy handler.
+    pub fn busy_timeout(&mut self, d: Duration) -> SqliteResult<()> {
+        let ms = d.num_milliseconds() as i32;
+        let result = unsafe { ffi::sqlite3_busy_timeout(self.db, ms) };
+        decode_result(result, "sqlite3_busy_timeout")
     }
 
     /// Expose the underlying `sqlite3` struct pointer for use
@@ -570,11 +579,22 @@ pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
 
 #[cfg(test)]
 mod test_opening {
-    use super::{DatabaseConnection};
+    use super::{DatabaseConnection, SqliteResult};
+    use std::time::Duration;
 
     #[test]
     fn db_construct_typechecks() {
         assert!(DatabaseConnection::in_memory().is_ok())
+    }
+
+    #[test]
+    fn db_busy_timeout() {
+        fn go() -> SqliteResult<()> {
+            let mut db = try!(DatabaseConnection::in_memory()
+                              .map_err(|(code, _msg)| code));
+            db.busy_timeout(Duration::seconds(2))
+        }
+        go().unwrap();
     }
 
     // TODO: _v2 with flags
