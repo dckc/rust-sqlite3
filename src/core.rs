@@ -221,7 +221,7 @@ impl DatabaseConnection {
         let mut tail = ptr::null();
         let z_sql = sql.as_ptr() as *const ::libc::c_char;
         let n_byte = sql.len() as c_int;
-        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) }; // FIXME tail
+        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
         match decode_result(r, "sqlite3_prepare_v2") {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
@@ -313,7 +313,7 @@ impl<'db> Drop for PreparedStatement<'db> {
             // "The sqlite3_finalize(S) routine can be called at any
             // point during the life cycle of prepared statement S"
 
-            ffi::sqlite3_finalize(self.stmt); // TODO log error
+            ffi::sqlite3_finalize(self.stmt);
         }
     }
 }
@@ -367,7 +367,7 @@ impl<'db> PreparedStatement<'db> {
         let transient = unsafe { mem::transmute(-1i) };
         let len = value.len() as c_int;
         let r = value.with_c_str( |_v| {
-            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) } // FIXME transient
+            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
         });
         decode_result(r, "sqlite3_bind_text")
     }
