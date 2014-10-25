@@ -170,7 +170,7 @@ impl DatabaseConnection {
     pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, (SqliteError, String)> {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
-        match decode_result(result, "sqlite3_open") {
+        match decode_result(result, "sqlite3_open_v2") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
                 let msg = DatabaseConnection::_errmsg(db);
