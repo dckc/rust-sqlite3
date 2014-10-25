@@ -7,6 +7,7 @@ use sqlite3::{Access,
               Query, ResultRowAccess,
               SqliteResult, SqliteError};
 use sqlite3::access;
+use sqlite3::consts;
 
 #[deriving(Show)]
 struct Person {
@@ -16,7 +17,7 @@ struct Person {
 
 pub fn main() {
     let db = os::args()[1].clone(); // TODO: no I/O in main
-    let access = access::ByFilename { filename: db.as_slice() };
+    let access = access::ByFilename { filename: db.as_slice(), flags: consts::DEFAULT_OPEN_FLAGS };
 
     match io(access) {
         Ok(x) => println!("Ok: {}", x),
