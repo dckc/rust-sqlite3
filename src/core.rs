@@ -451,6 +451,13 @@ impl<'db> PreparedStatement<'db> {
         unsafe { ffi::sqlite3_clear_bindings(self.stmt) };
     }
 
+    /// Return the number of SQL parameters.
+    /// If parameters of the ?NNN form are used, there may be gaps in the list.
+    pub fn bind_parameter_count(&'db mut self) -> uint {
+        let count = unsafe { ffi::sqlite3_bind_parameter_count(self.stmt) };
+        count as uint
+    }
+
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
     /// with the `ffi` module.
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3_stmt {

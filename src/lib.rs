@@ -357,6 +357,7 @@ mod bind_tests {
             {
                 let mut tx = try!(database.prepare(
                     "INSERT INTO test (id, name, address) VALUES (?, ?, ?)"));
+                assert_eq!(tx.bind_parameter_count(), 3);
                 try!(tx.bind_int(1, 2));
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
