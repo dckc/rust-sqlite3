@@ -102,6 +102,7 @@ use std::c_str;
 
 pub use super::{SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
 
+use consts;
 use ffi;
 
 
@@ -145,9 +146,7 @@ impl Drop for DatabaseConnection {
     ///
     /// [1]: http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
-        // sqlite3_close_v2 was not introduced until 2012-09-03 (3.7.14)
-        // but we want to build on, e.g. travis, i.e. Ubuntu 12.04.
-        // let ok = unsafe { ffi::sqlite3_close_v2(self.db) };
+        // sqlite3_close_v2 is for gced languages.
         let ok = unsafe { ffi::sqlite3_close(self.db) };
         assert_eq!(ok, SQLITE_OK as c_int);
     }
@@ -189,7 +188,6 @@ impl DatabaseConnection {
 
     /// Create connection to an in-memory database.
     ///
-    ///  - TODO: use support _v2 interface with flags
     ///  - TODO: integrate sqlite3_errmsg()
     #[unstable]
     pub fn in_memory() -> Result<DatabaseConnection, (SqliteError, String)> {
@@ -197,7 +195,7 @@ impl DatabaseConnection {
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
                 ":memory:".with_c_str({
-                    |memory| unsafe { ffi::sqlite3_open(memory, db) }
+                    |memory| unsafe { ffi::sqlite3_open_v2(memory, db, consts::DEFAULT_OPEN_FLAGS.bits(), ptr::null()) }
                 })
             }
         }
@@ -223,7 +221,7 @@ impl DatabaseConnection {
         let mut tail = ptr::null();
         let z_sql = sql.as_ptr() as *const ::libc::c_char;
         let n_byte = sql.len() as c_int;
-        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
+        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) }; // FIXME tail
         match decode_result(r, "sqlite3_prepare_v2") {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
@@ -310,14 +308,12 @@ impl<'db> Drop for PreparedStatement<'db> {
 
             // "If If the most recent evaluation of statement S
             // failed, then sqlite3_finalize(S) returns the
-            // appropriate error codethe most recent evaluation of
-            // statement S failed, then sqlite3_finalize(S) returns
-            // the appropriate error code"
+            // appropriate error code"
 
             // "The sqlite3_finalize(S) routine can be called at any
             // point during the life cycle of prepared statement S"
 
-            ffi::sqlite3_finalize(self.stmt);
+            ffi::sqlite3_finalize(self.stmt); // TODO log error
         }
     }
 }
@@ -371,7 +367,7 @@ impl<'db> PreparedStatement<'db> {
         let transient = unsafe { mem::transmute(-1i) };
         let len = value.len() as c_int;
         let r = value.with_c_str( |_v| {
-            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
+            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) } // FIXME transient
         });
         decode_result(r, "sqlite3_bind_text")
     }
