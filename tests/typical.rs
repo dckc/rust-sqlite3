@@ -29,6 +29,7 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         };
     }
     assert_eq!(conn.changes(), 1);
+    assert_eq!(conn.last_insert_rowid(), 1);
     {
         let mut stmt = try!(conn.prepare(
             "select * from items"));

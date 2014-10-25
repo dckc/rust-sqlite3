@@ -288,6 +288,14 @@ impl DatabaseConnection {
         count as uint
     }
 
+    /// Return the rowid of the most recent successful INSERT into
+    /// a rowid table or virtual table.
+    ///
+    /// cf `sqlite3_last_insert_rowid`
+    pub fn last_insert_rowid(&self) -> i64 {
+        unsafe { ffi::sqlite3_last_insert_rowid(self.db) }
+    }
+
     /// Expose the underlying `sqlite3` struct pointer for use
     /// with the `ffi` module.
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3 {
