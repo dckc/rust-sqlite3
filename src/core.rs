@@ -359,6 +359,9 @@ enum Step {
 impl<'db> PreparedStatement<'db> {
     /// Execute a query that may return rows, such as a SELECT.
     pub fn exec_query(&'db mut self) -> ResultSet<'db> {
+        /* TODO check only once or during test
+        if self.column_count() == 0 || !self.readonly() {
+        }*/
         ResultSet { statement: self }
     }
 
@@ -462,9 +465,15 @@ impl<'db> PreparedStatement<'db> {
         count as uint
     }
 
-    fn column_count(&self) -> uint {
+    /// Return the number of columns in the result set for the statement (with or without row).
+    pub fn column_count(&self) -> uint {
         let count = unsafe { ffi::sqlite3_column_count(self.stmt) };
         count as uint
+    }
+
+    /// Return true if the prepared statement is guaranteed to not modify the database.
+    pub fn readonly(&self) -> bool {
+        unsafe { ffi::sqlite3_stmt_readonly(self.stmt) != 0 }
     }
 
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
