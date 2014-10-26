@@ -10,7 +10,7 @@
 //!
 //! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
 //!
-//! fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
+//! fn convenience_exec() -> Result<DatabaseConnection, SqliteError> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
 //!
 //!     try!(conn.exec("
@@ -18,8 +18,7 @@
 //!                    id integer,
 //!                    description varchar(40),
 //!                    price integer
-//!                    )")
-//!        .map_err(|code| (code, conn.errmsg())));
+//!                    )"));
 //!
 //!     Ok(conn)
 //!  }
@@ -164,23 +163,19 @@ pub trait Access {
 
 impl DatabaseConnection {
     /// Given explicit access to a database, attempt to connect to it.
-    ///
-    /// Note `SqliteError` code is accompanied by (copy) of `sqlite3_errmsg()`.
-    pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, (SqliteError, String)> {
+    pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, SqliteError> {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
         match decode_result(db, result, "sqlite3_open_v2", None) {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
-                let msg = DatabaseConnection::_errmsg(db);
-
                 // "Whether or not an error occurs when it is opened,
                 // resources associated with the database connection
                 // handle should be released by passing it to
                 // sqlite3_close() when it is no longer required."
                 unsafe { ffi::sqlite3_close(db) };
 
-                Err((err, msg))
+                Err(err)
             }
         }
     }
@@ -189,7 +184,7 @@ impl DatabaseConnection {
     ///
     ///  - TODO: integrate sqlite3_errmsg()
     #[unstable]
-    pub fn in_memory() -> Result<DatabaseConnection, (SqliteError, String)> {
+    pub fn in_memory() -> Result<DatabaseConnection, SqliteError> {
         struct InMemory;
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
@@ -649,8 +644,17 @@ pub fn decode_result(db: *mut ffi::sqlite3, result: c_int, context: &str, detail
         // .unwrap_or(SQLITE_ERROR)?
         Err(SqliteError{
                 code: from_i32::<SqliteErrorCode>(result).expect(context),
-                msg: DatabaseConnection::_errmsg(db), // FIXME when db is null
+                msg: error_msg(db, result),
                 detail: detail})
+    }
+}
+
+fn error_msg(db: *mut ffi::sqlite3, result: c_int) -> String {
+    if db.is_null() {
+        let msg = unsafe { c_str::CString::new(ffi::sqlite3_errstr(result), false) };
+        msg.as_str().to_string()
+    } else {
+        DatabaseConnection::_errmsg(db)
     }
 }
 
@@ -668,8 +672,7 @@ mod test_opening {
     #[test]
     fn db_busy_timeout() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::in_memory()
-                              .map_err(|(code, _msg)| code));
+            let mut db = try!(DatabaseConnection::in_memory());
             db.busy_timeout(Duration::seconds(2))
         }
         go().unwrap();
@@ -684,8 +687,7 @@ mod test_opening {
     #[test]
     fn db_trace_callback() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::in_memory()
-                              .map_err(|(code, _msg)| code));
+            let mut db = try!(DatabaseConnection::in_memory());
             db.trace(Some(trace_callback));
             let mut s = try!(db.prepare("select ?"));
             try!(s.bind_int(1, 1));
@@ -709,8 +711,7 @@ mod tests {
     #[test]
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::in_memory()
-                              .map_err(|(code, _msg)| code));
+            let mut db = try!(DatabaseConnection::in_memory());
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
@@ -718,8 +719,7 @@ mod tests {
 
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory()
-                          .map_err(|(code, _msg)| code));
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.exec_query();
         Ok(f(&mut rows))
