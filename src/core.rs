@@ -29,18 +29,16 @@
 //!         let mut stmt = try!(conn.prepare(
 //!             "insert into items (id, description, price)
 //!            values (1, 'stuff', 10)"));
-//!         let mut results = stmt.execute();
-//!         match results.step() {
-//!             None => (),
-//!             Some(Ok(_)) => fail!("row from insert?!"),
-//!             Some(Err(oops)) => fail!(oops)
+//!         match stmt.exec() {
+//!             Ok(_) => (),
+//!             Err(oops) => fail!(oops)
 //!         };
 //!     }
 //!     assert_eq!(conn.changes(), 1);
 //!     {
 //!         let mut stmt = try!(conn.prepare(
 //!             "select * from items"));
-//!         let mut results = stmt.execute();
+//!         let mut results = stmt.exec_query();
 //!         match results.step() {
 //!             Some(Ok(ref mut row1)) => {
 //!                 let id = row1.column_int(0);
@@ -346,15 +344,51 @@ impl<'db> Drop for PreparedStatement<'db> {
     }
 }
 
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+enum Step {
+    SQLITE_ROW       = 100,
+    SQLITE_DONE      = 101,
+}
+
 
 /// A compiled prepared statement that may take parameters.
 /// **Note:** "The leftmost SQL parameter has an index of 1."[1]
 ///
 /// [1]: http://www.sqlite.org/c3ref/bind_blob.html
 impl<'db> PreparedStatement<'db> {
-    /// Begin executing a statement.
-    pub fn execute(&'db mut self) -> ResultSet<'db> {
+    /// Execute a query that may return rows, such as a SELECT.
+    pub fn exec_query(&'db mut self) -> ResultSet<'db> {
         ResultSet { statement: self }
+    }
+
+    /// Execute a query that doesn't return rows, such as DML (INSERT, UPDATE) or DDL (CREATE, DROP).
+    pub fn exec(&mut self) -> SqliteResult<()> {
+        let result = unsafe { ffi::sqlite3_step(self.stmt) };
+        // Release implicit lock as soon as possible
+        self.reset();
+        match from_i32::<Step>(result) {
+            Some(SQLITE_ROW) => Err(super::SQLITE_MISUSE), // , "row from update?!"
+            Some(SQLITE_DONE) => {
+                // TODO check only once or during test
+                /*if self.column_count() > 0 {
+                    Err(super::SQLITE_MISUSE) // , "column from update?!"
+                } else*/ {
+                    Ok(())
+                }
+            },
+            None => Err(from_i32::<SqliteError>(result).expect("step"))
+        }
+    }
+
+    fn reset(&mut self) {
+        // We ignore the return code from reset because it has already
+        // been reported:
+        //
+        // "If the most recent call to sqlite3_step(S) for the prepared
+        // statement S indicated an error, then sqlite3_reset(S)
+        // returns an appropriate error code."
+        unsafe { ffi::sqlite3_reset(self.stmt) };
     }
 
     /// Bind null to a statement parameter.
@@ -423,8 +457,13 @@ impl<'db> PreparedStatement<'db> {
 
     /// Return the number of SQL parameters.
     /// If parameters of the ?NNN form are used, there may be gaps in the list.
-    pub fn bind_parameter_count(&'db mut self) -> uint {
+    pub fn bind_parameter_count(&self) -> uint {
         let count = unsafe { ffi::sqlite3_bind_parameter_count(self.stmt) };
+        count as uint
+    }
+
+    fn column_count(&self) -> uint {
+        let count = unsafe { ffi::sqlite3_column_count(self.stmt) };
         count as uint
     }
 
@@ -441,25 +480,11 @@ pub struct ResultSet<'s> {
     statement: &'s mut PreparedStatement<'s>,
 }
 
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-enum Step {
-    SQLITE_ROW       = 100,
-    SQLITE_DONE      = 101,
-}
-
 
 #[unsafe_destructor]
 impl<'s> Drop for ResultSet<'s> {
     fn drop(&mut self) {
-
-        // We ignore the return code from reset because it has already
-        // been reported:
-        //
-        // "If the most recent call to sqlite3_step(S) for the prepared
-        // statement S indicated an error, then sqlite3_reset(S)
-        // returns an appropriate error code."
-        unsafe { ffi::sqlite3_reset(self.statement.stmt) };
+        self.statement.reset();
     }
 }
 
@@ -506,9 +531,7 @@ impl<'s, 'r> ResultRow<'s, 'r> {
     /// not return data (for example an UPDATE)."*
     #[unstable]
     pub fn column_count(&self) -> uint {
-        let stmt = self.rows.statement.stmt;
-        let result = unsafe { ffi::sqlite3_column_count(stmt) };
-        result as uint
+        self.rows.statement.column_count()
     }
 
     /// Look up a column name and compute some function of it.
@@ -633,7 +656,7 @@ mod test_opening {
             db.trace(Some(trace_callback));
             let mut s = try!(db.prepare("select ?"));
             try!(s.bind_int(1, 1));
-            match s.execute().step() {
+            match s.exec_query().step() {
                 Some(Err(e)) => Err(e),
                 _ => Ok(())
 
@@ -665,7 +688,7 @@ mod tests {
         let mut db = try!(DatabaseConnection::in_memory()
                           .map_err(|(code, _msg)| code));
         let mut s = try!(db.prepare(sql));
-        let mut rows = s.execute();
+        let mut rows = s.exec_query();
         Ok(f(&mut rows))
     }
 

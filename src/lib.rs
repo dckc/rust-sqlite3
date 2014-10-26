@@ -135,12 +135,7 @@ impl DatabaseUpdate for core::DatabaseConnection {
                        values: &[&ToSql]) -> SqliteResult<uint> {
         let check = {
             try!(bind_values(stmt, values));
-            let mut results = stmt.execute();
-            match results.step() {
-                None => Ok(()),
-                Some(Ok(_row)) => Err(SQLITE_MISUSE),
-                Some(Err(e)) => Err(e)
-            }
+            stmt.exec()
         };
         check.map(|_ok| self.changes())
     }
@@ -166,7 +161,7 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
              each_row: |&mut ResultRow|: 's -> SqliteResult<()>
              ) -> SqliteResult<()> {
         try!(bind_values(self, values));
-        let mut results = self.execute();
+        let mut results = self.exec_query();
         loop {
             match results.step() {
                 None => break,
@@ -330,13 +325,12 @@ mod bind_tests {
                 try!(tx.bind_int(1, 2));
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
-                let mut results = tx.execute();
-                assert!(results.step().is_none());
+                try!(tx.exec());
             }
             assert_eq!(database.changes(), 1);
 
             let mut q = try!(database.prepare("select * from test order by id"));
-            let mut rows = q.execute();
+            let mut rows = q.exec_query();
             match rows.step() {
                 Some(Ok(ref mut row)) => {
                     assert_eq!(row.get::<uint, i32>(0), 1);
@@ -366,7 +360,7 @@ mod bind_tests {
         let mut db = try!(DatabaseConnection::in_memory()
                           .map_err(|(code, _msg)| code));
         let mut s = try!(db.prepare(sql));
-        let mut rows = s.execute();
+        let mut rows = s.exec_query();
         Ok(f(&mut rows))
     }
 

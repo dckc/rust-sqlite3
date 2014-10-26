@@ -139,7 +139,7 @@ mod tests {
                                 .map_err(|(code, _msg)| code));
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
-            let mut results = stmt.execute();
+            let mut results = stmt.exec_query();
             match results.step() {
                 Some(Ok(ref mut row)) => {
                     assert_eq!(
