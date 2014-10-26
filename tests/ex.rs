@@ -23,9 +23,9 @@ pub fn main() {
     }
 }
 
-fn io() -> Result<Vec<Person>, (SqliteError, String)> {
+fn io() -> Result<Vec<Person>, SqliteError> {
     let mut conn = try!(DatabaseConnection::in_memory());
-    with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+    with_conn(&mut conn)
 }
 
 fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {

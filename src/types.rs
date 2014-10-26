@@ -133,8 +133,7 @@ mod tests {
     #[test]
     fn get_tm() {
         fn go() -> SqliteResult<()> {
-            let mut conn = try!(DatabaseConnection::in_memory()
-                                .map_err(|(code, _msg)| code));
+            let mut conn = try!(DatabaseConnection::in_memory());
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
             let mut results = stmt.exec_query();

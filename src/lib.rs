@@ -41,9 +41,9 @@
 //!     }
 //! }
 //!
-//! fn io() -> Result<Vec<Person>, (SqliteError, String)> {
+//! fn io() -> Result<Vec<Person>, SqliteError> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//!     with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+//!     with_conn(&mut conn)
 //! }
 //!
 //! fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
@@ -330,8 +330,7 @@ mod bind_tests {
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(DatabaseConnection::in_memory()
-                                    .map_err(|(code, _msg)| code));
+            let mut database = try!(DatabaseConnection::in_memory());
 
             try!(database.exec(
                 "BEGIN;
@@ -378,8 +377,7 @@ mod bind_tests {
     }
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory()
-                          .map_err(|(code, _msg)| code));
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.exec_query();
         Ok(f(&mut rows))

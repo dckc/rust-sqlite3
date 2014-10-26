@@ -25,11 +25,11 @@ pub fn main() {
     }
 }
 
-fn io<A: sqlite3::Access>(access: A) -> Result<Vec<Person>, (SqliteError, String)> {
+fn io<A: sqlite3::Access>(access: A) -> Result<Vec<Person>, SqliteError> {
     match DatabaseConnection::new(access) {
         Ok(ref mut conn) => match io2(conn) {
             Ok(ppl) => Ok(ppl),
-            Err(oops) => Err((oops, conn.errmsg()))
+            Err(oops) => Err(oops)
         },
         Err(oops) => Err(oops)
     }

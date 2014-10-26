@@ -2,7 +2,7 @@ extern crate sqlite3;
 
 use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
 
-fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
+fn convenience_exec() -> Result<DatabaseConnection, SqliteError> {
     let mut conn = try!(DatabaseConnection::in_memory());
 
     try!(conn.exec("
@@ -10,8 +10,7 @@ fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
                    id integer,
                    description varchar(40),
                    price integer
-                   )")
-         .map_err(|code| (code, conn.errmsg())));
+                   )"));
 
     Ok(conn)
 }

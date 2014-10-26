@@ -28,7 +28,7 @@ use ffi;
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
-pub fn open(filename: &str, flags: OpenFlags) -> Result<DatabaseConnection, (SqliteError, String)> {
+pub fn open(filename: &str, flags: OpenFlags) -> Result<DatabaseConnection, SqliteError> {
     DatabaseConnection::new(ByFilename { filename: filename, flags: flags })
 }
 
