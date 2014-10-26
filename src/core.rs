@@ -300,6 +300,11 @@ impl DatabaseConnection {
         decode_result(self.db, result, "sqlite3_busy_timeout", None)
     }
 
+    /// Interrupt a long-running query.
+    pub fn interrupt(&mut self) {
+        unsafe { ffi::sqlite3_interrupt(self.db) };
+    }
+
     /// Expose the underlying `sqlite3` struct pointer for use
     /// with the `ffi` module.
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3 {
