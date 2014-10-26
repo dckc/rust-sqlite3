@@ -99,7 +99,7 @@ use std::mem;
 use std::c_str;
 use std::time::Duration;
 
-pub use super::{SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
+pub use super::{SqliteErrorCode, SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
 
 use consts;
 use ffi;
@@ -169,7 +169,7 @@ impl DatabaseConnection {
     pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, (SqliteError, String)> {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
-        match decode_result(result, "sqlite3_open_v2") {
+        match decode_result(db, result, "sqlite3_open_v2", None) {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
                 let msg = DatabaseConnection::_errmsg(db);
@@ -221,10 +221,10 @@ impl DatabaseConnection {
         let z_sql = sql.as_ptr() as *const ::libc::c_char;
         let n_byte = sql.len() as c_int;
         let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
-        match decode_result(r, "sqlite3_prepare_v2") {
+        match decode_result(self.db, r, "sqlite3_prepare_v2", None) {
             Ok(()) => {
                 let offset = tail as uint - z_sql as uint;
-                Ok((PreparedStatement { stmt: stmt }, offset))
+                Ok((PreparedStatement { stmt: stmt, db: self.db }, offset))
             },
             Err(code) => Err(code)
         }
@@ -271,7 +271,7 @@ impl DatabaseConnection {
         let result = sql.with_c_str(
             |c_sql| unsafe { ffi::sqlite3_exec(db, c_sql, None,
                                                ptr::null_mut(), ptr::null_mut()) });
-        decode_result(result, "sqlite3_exec")
+        decode_result(db, result, "sqlite3_exec", None)
     }
 
     /// Return the number of database rows that were changed or
@@ -297,7 +297,7 @@ impl DatabaseConnection {
     /// If duration is zero or negative, turns off busy handler.
     pub fn busy_timeout(&mut self, d: Duration) -> SqliteResult<()> {
         let result = unsafe { ffi::sqlite3_busy_timeout(self.db, d.num_milliseconds() as i32) };
-        decode_result(result, "sqlite3_busy_timeout")
+        decode_result(self.db, result, "sqlite3_busy_timeout", None)
     }
 
     /// Expose the underlying `sqlite3` struct pointer for use
@@ -322,7 +322,8 @@ impl DatabaseConnection {
 
 /// A prepared statement.
 pub struct PreparedStatement<'db> {
-    stmt: *mut ffi::sqlite3_stmt
+    stmt: *mut ffi::sqlite3_stmt,
+    db: *mut ffi::sqlite3
 }
 
 #[unsafe_destructor]
@@ -371,7 +372,10 @@ impl<'db> PreparedStatement<'db> {
         // Release implicit lock as soon as possible
         self.reset();
         match from_i32::<Step>(result) {
-            Some(SQLITE_ROW) => Err(super::SQLITE_MISUSE), // , "row from update?!"
+            Some(SQLITE_ROW) => Err(SqliteError{
+                code: super::SQLITE_MISUSE,
+                msg: "row from update?!".to_string(),
+                detail: Some(self.sql())}),
             Some(SQLITE_DONE) => {
                 // TODO check only once or during test
                 /*if self.column_count() > 0 {
@@ -380,7 +384,10 @@ impl<'db> PreparedStatement<'db> {
                     Ok(())
                 }
             },
-            None => Err(from_i32::<SqliteError>(result).expect("step"))
+            None => Err(SqliteError{
+                code: from_i32::<SqliteErrorCode>(result).expect("step"),
+                msg: DatabaseConnection::_errmsg(self.db),
+                detail: Some(self.sql())})
         }
     }
 
@@ -398,28 +405,28 @@ impl<'db> PreparedStatement<'db> {
     pub fn bind_null(&mut self, i: uint) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_null(self.stmt, ix ) };
-        decode_result(r, "sqlite3_bind_null")
+        decode_result(self.db, r, "sqlite3_bind_null", None)
     }
 
     /// Bind an int to a statement parameter.
     pub fn bind_int(&mut self, i: uint, value: i32) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_int(self.stmt, ix, value) };
-        decode_result(r, "sqlite3_bind_int")
+        decode_result(self.db, r, "sqlite3_bind_int", None)
     }
 
     /// Bind an int64 to a statement parameter.
     pub fn bind_int64(&mut self, i: uint, value: i64) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_int64(self.stmt, ix, value) };
-        decode_result(r, "sqlite3_bind_int64")
+        decode_result(self.db, r, "sqlite3_bind_int64", None)
     }
 
     /// Bind a double to a statement parameter.
     pub fn bind_double(&mut self, i: uint, value: f64) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_double(self.stmt, ix, value) };
-        decode_result(r, "sqlite3_bind_double")
+        decode_result(self.db, r, "sqlite3_bind_double", None)
     }
 
     /// Bind a (copy of a) str to a statement parameter.
@@ -434,7 +441,7 @@ impl<'db> PreparedStatement<'db> {
         let r = value.with_c_str( |_v| {
             unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
         });
-        decode_result(r, "sqlite3_bind_text")
+        decode_result(self.db, r, "sqlite3_bind_text", None)
     }
 
     /// Bind a (copy of a) byte sequence to a statement parameter.
@@ -449,7 +456,7 @@ impl<'db> PreparedStatement<'db> {
         // from &[u8] to &[i8]
         let val = unsafe { mem::transmute(value.as_ptr()) };
         let r = unsafe { ffi::sqlite3_bind_blob(self.stmt, ix, val, len, transient) };
-        decode_result(r, "sqlite3_bind_blob")
+        decode_result(self.db, r, "sqlite3_bind_blob", None)
     }
 
     /// Clear all parameter bindings.
@@ -474,6 +481,12 @@ impl<'db> PreparedStatement<'db> {
     /// Return true if the prepared statement is guaranteed to not modify the database.
     pub fn readonly(&self) -> bool {
         unsafe { ffi::sqlite3_stmt_readonly(self.stmt) != 0 }
+    }
+
+    /// Return the SQL associated with a prepared statement.
+    pub fn sql(&self) -> String {
+        let sql = unsafe { c_str::CString::new(ffi::sqlite3_sql(self.stmt), false) };
+        sql.as_str().to_string()
     }
 
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
@@ -511,7 +524,10 @@ impl<'s> ResultSet<'s> {
                 Some(Ok(ResultRow{ rows: self }))
             },
             Some(SQLITE_DONE) => None,
-            None => Some(Err(from_i32::<SqliteError>(result).expect("step")))
+            None => Some(Err(SqliteError{
+                code: from_i32::<SqliteErrorCode>(result).expect("step"),
+                msg: DatabaseConnection::_errmsg(self.statement.db),
+                detail: Some(self.statement.sql())}))
         }
     }
 }
@@ -621,12 +637,15 @@ impl<'s, 'r> ResultRow<'s, 'r> {
 ///
 /// Note the use of the `Result<T, E>` pattern to distinguish errors in
 /// the type system.
-pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
+pub fn decode_result(db: *mut ffi::sqlite3, result: c_int, context: &str, detail: Option<String>) -> SqliteResult<()> {
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
         // .unwrap_or(SQLITE_ERROR)?
-        Err(from_i32::<SqliteError>(result).expect(context))
+        Err(SqliteError{
+                code: from_i32::<SqliteErrorCode>(result).expect(context),
+                msg: DatabaseConnection::_errmsg(db), // FIXME when db is null
+                detail: detail})
     }
 }
 

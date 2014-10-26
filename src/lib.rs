@@ -89,6 +89,7 @@
 extern crate libc;
 extern crate time;
 
+use std::fmt;
 use std::fmt::Show;
 
 pub use core::Access;
@@ -175,7 +176,8 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
 
 fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     if values.len() < s.bind_parameter_count() { // may be useful when a value is missing but pedantic when intentional
-        return Err(SQLITE_MISUSE);
+        let msg = format!("incorrect argument count: have {} want {}", values.len(), s.bind_parameter_count());
+        return Err(SqliteError{ code: SQLITE_MISUSE, msg: msg, detail: None });
     }
     for (ix, v) in values.iter().enumerate() {
         try!(v.to_sql(s, ix + 1));
@@ -194,7 +196,7 @@ pub trait ResultRowAccess {
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
 
     /// Try to get `T` type result value from `idx`th column of a row.
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
+    fn get_opt<I: RowIndex + Show, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
 impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
@@ -205,10 +207,10 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
         }
     }
 
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
+    fn get_opt<I: RowIndex + Show, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
-            None => Err(SQLITE_MISUSE)
+            None => Err(SqliteError{ code: SQLITE_MISUSE, msg: format!("invalid column {}", idx), detail: None })
         }
     }
 
@@ -254,10 +256,10 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[deriving(Clone, Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 #[allow(missing_doc)]
-pub enum SqliteError {
+pub enum SqliteErrorCode {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
     SQLITE_PERM      =  3,
@@ -286,6 +288,25 @@ pub enum SqliteError {
     SQLITE_NOTADB    = 26
 }
 
+/// SQLite error details
+#[deriving(Clone, PartialEq, Eq)]
+pub struct SqliteError {
+    /// The error code.
+    pub code: SqliteErrorCode,
+    /// The error message.
+    pub msg: String,
+    /// Optional error detail.
+    pub detail: Option<String>,
+}
+
+impl fmt::Show for SqliteError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self.detail {
+            Some(ref s) => write!(fmt, "{}: {} ({})", self.code, self.msg, s),
+            None => write!(fmt, "{}: {}", self.code, self.msg)
+        }
+    }
+}
 
 /// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
