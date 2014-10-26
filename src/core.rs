@@ -309,6 +309,18 @@ impl DatabaseConnection {
     }
 }
 
+pub type TraceCallback =
+  Option<extern "C" fn (p_arg: *mut ::libc::c_void, z_sql: *const ::libc::c_char)>;
+impl DatabaseConnection {
+    /// Register or clear a callback function that can be used for tracing the execution of SQL statements.
+    /// Prepared statement placeholders are replaced/logged with their assigned values.
+    /// There can only be a single tracer defined for each database connection.
+    /// Setting a new tracer clears the old one.
+    pub fn trace(&mut self, x_trace: TraceCallback) {
+        unsafe { ffi::sqlite3_trace(self.db, x_trace, ptr::null_mut()); }
+    }
+}
+
 
 /// A prepared statement.
 pub struct PreparedStatement<'db> {
@@ -603,6 +615,29 @@ mod test_opening {
             let mut db = try!(DatabaseConnection::in_memory()
                               .map_err(|(code, _msg)| code));
             db.busy_timeout(Duration::seconds(2))
+        }
+        go().unwrap();
+    }
+
+    extern "C" fn trace_callback(_: *mut ::libc::c_void, z_sql: *const ::libc::c_char) {
+        unsafe {
+            println!("SQL: {}", ::std::c_str::CString::new(z_sql, false));
+        }
+    }
+
+    #[test]
+    fn db_trace_callback() {
+        fn go() -> SqliteResult<()> {
+            let mut db = try!(DatabaseConnection::in_memory()
+                              .map_err(|(code, _msg)| code));
+            db.trace(Some(trace_callback));
+            let mut s = try!(db.prepare("select ?"));
+            try!(s.bind_int(1, 1));
+            match s.execute().step() {
+                Some(Err(e)) => Err(e),
+                _ => Ok(())
+
+            }
         }
         go().unwrap();
     }
