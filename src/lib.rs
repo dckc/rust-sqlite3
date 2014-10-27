@@ -177,7 +177,7 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
 fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     if values.len() < s.bind_parameter_count() { // may be useful when a value is missing but pedantic when intentional
         let msg = format!("incorrect argument count: have {} want {}", values.len(), s.bind_parameter_count());
-        return Err(SqliteError{ code: SQLITE_MISUSE, msg: msg, detail: None });
+        return Err(SqliteError::new(SQLITE_MISUSE, msg, None));
     }
     for (ix, v) in values.iter().enumerate() {
         try!(v.to_sql(s, ix + 1));
@@ -210,7 +210,7 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
     fn get_opt<I: RowIndex + Show, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
-            None => Err(SqliteError{ code: SQLITE_MISUSE, msg: format!("invalid column {}", idx), detail: None })
+            None => Err(SqliteError::new(SQLITE_MISUSE, format!("invalid column {}", idx), None))
         }
     }
 
@@ -288,6 +288,74 @@ pub enum SqliteErrorCode {
     SQLITE_NOTADB    = 26
 }
 
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+// TODO: use, test this
+enum SqliteLogLevel {
+    SQLITE_NOTICE    = 27,
+    SQLITE_WARNING   = 28,
+}
+
+/// Extended result codes
+#[deriving(Clone, Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+#[allow(missing_doc)]
+pub enum ExtendedResultCode {
+    SQLITE_IOERR_READ              = (SQLITE_IOERR as int | (1<<8)),
+    SQLITE_IOERR_SHORT_READ        = (SQLITE_IOERR as int | (2<<8)),
+    SQLITE_IOERR_WRITE             = (SQLITE_IOERR as int | (3<<8)),
+    SQLITE_IOERR_FSYNC             = (SQLITE_IOERR as int | (4<<8)),
+    SQLITE_IOERR_DIR_FSYNC         = (SQLITE_IOERR as int | (5<<8)),
+    SQLITE_IOERR_TRUNCATE          = (SQLITE_IOERR as int | (6<<8)),
+    SQLITE_IOERR_FSTAT             = (SQLITE_IOERR as int | (7<<8)),
+    SQLITE_IOERR_UNLOCK            = (SQLITE_IOERR as int | (8<<8)),
+    SQLITE_IOERR_RDLOCK            = (SQLITE_IOERR as int | (9<<8)),
+    SQLITE_IOERR_DELETE            = (SQLITE_IOERR as int | (10<<8)),
+    SQLITE_IOERR_BLOCKED           = (SQLITE_IOERR as int | (11<<8)),
+    SQLITE_IOERR_NOMEM             = (SQLITE_IOERR as int | (12<<8)),
+    SQLITE_IOERR_ACCESS            = (SQLITE_IOERR as int | (13<<8)),
+    SQLITE_IOERR_CHECKRESERVEDLOCK = (SQLITE_IOERR as int | (14<<8)),
+    SQLITE_IOERR_LOCK              = (SQLITE_IOERR as int | (15<<8)),
+    SQLITE_IOERR_CLOSE             = (SQLITE_IOERR as int | (16<<8)),
+    SQLITE_IOERR_DIR_CLOSE         = (SQLITE_IOERR as int | (17<<8)),
+    SQLITE_IOERR_SHMOPEN           = (SQLITE_IOERR as int | (18<<8)),
+    SQLITE_IOERR_SHMSIZE           = (SQLITE_IOERR as int | (19<<8)),
+    SQLITE_IOERR_SHMLOCK           = (SQLITE_IOERR as int | (20<<8)),
+    SQLITE_IOERR_SHMMAP            = (SQLITE_IOERR as int | (21<<8)),
+    SQLITE_IOERR_SEEK              = (SQLITE_IOERR as int | (22<<8)),
+    SQLITE_IOERR_DELETE_NOENT      = (SQLITE_IOERR as int | (23<<8)),
+    SQLITE_IOERR_MMAP              = (SQLITE_IOERR as int | (24<<8)),
+    SQLITE_IOERR_GETTEMPPATH       = (SQLITE_IOERR as int | (25<<8)),
+    SQLITE_IOERR_CONVPATH          = (SQLITE_IOERR as int | (26<<8)),
+    SQLITE_LOCKED_SHAREDCACHE      = (SQLITE_LOCKED as int |  (1<<8)),
+    SQLITE_BUSY_RECOVERY           = (SQLITE_BUSY   as int |  (1<<8)),
+    SQLITE_BUSY_SNAPSHOT           = (SQLITE_BUSY   as int |  (2<<8)),
+    SQLITE_CANTOPEN_NOTEMPDIR      = (SQLITE_CANTOPEN as int | (1<<8)),
+    SQLITE_CANTOPEN_ISDIR          = (SQLITE_CANTOPEN as int | (2<<8)),
+    SQLITE_CANTOPEN_FULLPATH       = (SQLITE_CANTOPEN as int | (3<<8)),
+    SQLITE_CANTOPEN_CONVPATH       = (SQLITE_CANTOPEN as int | (4<<8)),
+    SQLITE_CORRUPT_VTAB            = (SQLITE_CORRUPT as int | (1<<8)),
+    SQLITE_READONLY_RECOVERY       = (SQLITE_READONLY as int | (1<<8)),
+    SQLITE_READONLY_CANTLOCK       = (SQLITE_READONLY as int | (2<<8)),
+    SQLITE_READONLY_ROLLBACK       = (SQLITE_READONLY as int | (3<<8)),
+    SQLITE_READONLY_DBMOVED        = (SQLITE_READONLY as int | (4<<8)),
+    SQLITE_ABORT_ROLLBACK          = (SQLITE_ABORT as int | (2<<8)),
+    SQLITE_CONSTRAINT_CHECK        = (SQLITE_CONSTRAINT as int | (1<<8)),
+    SQLITE_CONSTRAINT_COMMITHOOK   = (SQLITE_CONSTRAINT as int | (2<<8)),
+    SQLITE_CONSTRAINT_FOREIGNKEY   = (SQLITE_CONSTRAINT as int | (3<<8)),
+    SQLITE_CONSTRAINT_FUNCTION     = (SQLITE_CONSTRAINT as int | (4<<8)),
+    SQLITE_CONSTRAINT_NOTNULL      = (SQLITE_CONSTRAINT as int | (5<<8)),
+    SQLITE_CONSTRAINT_PRIMARYKEY   = (SQLITE_CONSTRAINT as int | (6<<8)),
+    SQLITE_CONSTRAINT_TRIGGER      = (SQLITE_CONSTRAINT as int | (7<<8)),
+    SQLITE_CONSTRAINT_UNIQUE       = (SQLITE_CONSTRAINT as int | (8<<8)),
+    SQLITE_CONSTRAINT_VTAB         = (SQLITE_CONSTRAINT as int | (9<<8)),
+    SQLITE_CONSTRAINT_ROWID        = (SQLITE_CONSTRAINT as int |(10<<8)),
+    SQLITE_NOTICE_RECOVER_WAL      = (SQLITE_NOTICE as int | (1<<8)),
+    SQLITE_NOTICE_RECOVER_ROLLBACK = (SQLITE_NOTICE as int | (2<<8)),
+    SQLITE_WARNING_AUTOINDEX       = (SQLITE_WARNING as int | (1<<8)),
+    SQLITE_AUTH_USER               = (SQLITE_AUTH as int | (1<<8))
+}
+
 /// SQLite error details
 #[deriving(Clone, PartialEq, Eq)]
 pub struct SqliteError {
@@ -297,13 +365,22 @@ pub struct SqliteError {
     pub msg: String,
     /// Optional error detail.
     pub detail: Option<String>,
+    /// Extended result code.
+    pub ext_code: Option<ExtendedResultCode>
+}
+
+impl SqliteError {
+    #[doc(hidden)]
+    pub fn new(code: SqliteErrorCode, msg: String, detail: Option<String>) -> SqliteError {
+        SqliteError{ code: code, msg: msg, detail: detail, ext_code: None }
+    }
 }
 
 impl fmt::Show for SqliteError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match self.detail {
-            Some(ref s) => write!(fmt, "{}: {} ({})", self.code, self.msg, s),
-            None => write!(fmt, "{}: {}", self.code, self.msg)
+            Some(ref s) => write!(fmt, "{}, {}: {} ({})", self.code, self.ext_code, self.msg, s),
+            None => write!(fmt, "{}, {}: {}", self.code, self.ext_code, self.msg)
         }
     }
 }

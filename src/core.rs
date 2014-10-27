@@ -98,7 +98,7 @@ use std::mem;
 use std::c_str;
 use std::time::Duration;
 
-pub use super::{SqliteErrorCode, SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
+pub use super::{SqliteErrorCode, ExtendedResultCode, SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
 
 use consts;
 use ffi;
@@ -115,14 +115,6 @@ pub enum SqliteOk {
     SQLITE_OK = 0
 }
 
-
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-// TODO: use, test this
-enum SqliteLogLevel {
-    SQLITE_NOTICE    = 27,
-    SQLITE_WARNING   = 28,
-}
 
 /// A connection to a sqlite3 database.
 pub struct DatabaseConnection {
@@ -365,10 +357,10 @@ impl<'db> PreparedStatement<'db> {
         // Release implicit lock as soon as possible
         self.reset();
         match from_i32::<Step>(result) {
-            Some(SQLITE_ROW) => Err(SqliteError{
-                code: super::SQLITE_MISUSE,
-                msg: "row from update?!".to_string(),
-                detail: Some(self.sql())}),
+            Some(SQLITE_ROW) => Err(SqliteError::new(
+                super::SQLITE_MISUSE,
+                "row from update?!".to_string(),
+                Some(self.sql()))),
             Some(SQLITE_DONE) => {
                 // TODO check only once or during test
                 /*if self.column_count() > 0 {
@@ -377,10 +369,7 @@ impl<'db> PreparedStatement<'db> {
                     Ok(())
                 }
             },
-            None => Err(SqliteError{
-                code: from_i32::<SqliteErrorCode>(result).expect("step"),
-                msg: DatabaseConnection::_errmsg(self.db),
-                detail: Some(self.sql())})
+            None => Err(new_error(self.db, result, "step", Some(self.sql())))
         }
     }
 
@@ -511,14 +500,13 @@ impl<'s> ResultSet<'s> {
                 Some(Ok(ResultRow{ rows: self }))
             },
             Some(SQLITE_DONE) => None,
-            None => Some(Err(SqliteError{
-                code: from_i32::<SqliteErrorCode>(result).expect("step"),
-                msg: DatabaseConnection::_errmsg(self.statement.db),
-                detail: Some(self.statement.sql())}))
+            None => {
+                let err = new_error(self.statement.db, result, "step", Some(self.statement.sql()));
+                Some(Err(err))
+            }
         }
     }
 }
-
 
 /// Access to columns of a row.
 pub struct ResultRow<'s: 'r, 'r> {
@@ -629,21 +617,24 @@ pub fn decode_result(db: *mut ffi::sqlite3, result: c_int, context: &str, detail
         Ok(())
     } else {
         // .unwrap_or(SQLITE_ERROR)?
-        Err(SqliteError{
-                code: from_i32::<SqliteErrorCode>(result).expect(context),
-                msg: error_msg(db, result),
-                detail: detail})
+        Err(new_error(db, result, context, detail))
     }
+}
+fn new_error(db: *mut ffi::sqlite3, result: c_int, context: &str, detail: Option<String>) -> SqliteError {
+    let (msg, ext_code) = if db.is_null() {
+        let msg = unsafe { c_str::CString::new(ffi::sqlite3_errstr(result), false) };
+        (msg.as_str().to_string(), None)
+    } else {
+        let ext_code = unsafe { ffi::sqlite3_extended_errcode(db) };
+        (DatabaseConnection::_errmsg(db), from_i32::<ExtendedResultCode>(ext_code))
+    };
+    SqliteError{
+        code: from_i32::<SqliteErrorCode>(result).expect(context),
+        msg: msg,
+        detail: detail,
+        ext_code: ext_code}
 }
 
-fn error_msg(db: *mut ffi::sqlite3, result: c_int) -> String {
-    if db.is_null() {
-        let msg = unsafe { c_str::CString::new(ffi::sqlite3_errstr(result), false) };
-        msg.as_str().to_string()
-    } else {
-        DatabaseConnection::_errmsg(db)
-    }
-}
 
 
 #[cfg(test)]
