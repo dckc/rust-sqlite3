@@ -97,10 +97,10 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 impl FromSql for time::Tm {
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
-            None => Err(SqliteError{ code: SQLITE_MISMATCH, msg: "null".to_string(), detail: None }),
+            None => Err(SqliteError::new(SQLITE_MISMATCH, "null".to_string(), None)),
             Some(txt) => match time::strptime(txt.as_slice(), SQLITE_TIME_FMT) {
                 Ok(tm) => Ok(tm),
-                Err(msg) => Err(SqliteError{ code: SQLITE_MISMATCH, msg: format!("{}", msg), detail: None })
+                Err(msg) => Err(SqliteError::new(SQLITE_MISMATCH, format!("{}", msg), None))
             }
         }
     }
@@ -111,7 +111,7 @@ impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
         match time::at_utc(*self).strftime(SQLITE_TIME_FMT) {
             Ok(text) => s.bind_text(ix, text.as_slice()),
-            Err(_oops) => Err(SqliteError{ code: SQLITE_MISMATCH, msg: format!("{}", _oops), detail: None })
+            Err(_oops) => Err(SqliteError::new(SQLITE_MISMATCH, format!("{}", _oops), None))
         }
     }
 }
