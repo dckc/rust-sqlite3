@@ -32,8 +32,8 @@
 //!         let mut results = stmt.execute();
 //!         match results.step() {
 //!             None => (),
-//!             Some(Ok(_)) => fail!("row from insert?!"),
-//!             Some(Err(oops)) => fail!(oops)
+//!             Some(Ok(_)) => panic!("row from insert?!"),
+//!             Some(Err(oops)) => panic!(oops)
 //!         };
 //!     }
 //!     assert_eq!(conn.changes(), 1);
@@ -53,8 +53,8 @@
 //!
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
-//!             Some(Err(oops)) => fail!(oops),
-//!             None => fail!("where did our row go?")
+//!             Some(Err(oops)) => panic!(oops),
+//!             None => panic!("where did our row go?")
 //!         }
 //!     }
 //! }
@@ -65,12 +65,12 @@
 //!             match typical_usage(db) {
 //!                 Ok(txt) => println!("item: {}", txt),
 //!                 Err(oops) => {
-//!                     fail!("error: {} msg: {}", oops,
+//!                     panic!("error: {} msg: {}", oops,
 //!                           db.errmsg())
 //!                 }
 //!             }
 //!         },
-//!         Err(oops) => fail!(oops)
+//!         Err(oops) => panic!(oops)
 //!     }
 //! }
 //! ```
@@ -111,7 +111,7 @@ use ffi;
 /// See SqliteResult, SqliteError for typical return code handling.
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum SqliteOk {
     SQLITE_OK = 0
 }

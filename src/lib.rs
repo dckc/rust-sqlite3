@@ -37,7 +37,7 @@
 //! pub fn main() {
 //!     match io() {
 //!         Ok(ppl) => println!("Found people: {}", ppl),
-//!         Err(oops) => fail!(oops)
+//!         Err(oops) => panic!(oops)
 //!     }
 //! }
 //!
@@ -84,7 +84,7 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 #![feature(unsafe_destructor)]
-#![warn(missing_doc)]
+#![warn(missing_docs)]
 
 extern crate libc;
 extern crate time;
@@ -101,7 +101,7 @@ pub mod types;
 /// bindgen-bindings to libsqlite3
 #[allow(non_camel_case_types, non_snake_case)]
 #[allow(dead_code)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub mod ffi;
 
 pub mod access;
@@ -199,7 +199,7 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
-            Err(err) => fail!("retrieving column {}: {}", idx, err)
+            Err(err) => panic!("retrieving column {}: {}", idx, err)
         }
     }
 
@@ -254,7 +254,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum SqliteError {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
@@ -288,7 +288,7 @@ pub enum SqliteError {
 /// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum ColumnType {
     SQLITE_INTEGER = 1,
     SQLITE_FLOAT   = 2,
@@ -335,7 +335,7 @@ mod bind_tests {
                     // TODO let name = q.get_text(1);
                     // assert_eq!(name.as_slice(), "John Doe");
                 },
-                _ => fail!()
+                _ => panic!()
             }
 
             match rows.step() {
@@ -344,13 +344,13 @@ mod bind_tests {
                     //TODO let addr = q.get_text(2);
                     // assert_eq!(addr.as_slice(), "345 e Walnut");
                 },
-                _ => fail!()
+                _ => panic!()
             }
             Ok(())
         }
         match go() {
             Ok(_) => (),
-            Err(e) => fail!("oops! {}", e)
+            Err(e) => panic!("oops! {}", e)
         }
     }
 

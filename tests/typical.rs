@@ -24,8 +24,8 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         let mut results = stmt.execute();
         match results.step() {
             None => (),
-            Some(Ok(_)) => fail!("row from insert?!"),
-            Some(Err(oops)) => fail!(oops)
+            Some(Ok(_)) => panic!("row from insert?!"),
+            Some(Err(oops)) => panic!(oops)
         };
     }
     assert_eq!(conn.changes(), 1);
@@ -45,8 +45,8 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 
                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
             },
-            Some(Err(oops)) => fail!(oops),
-            None => fail!("where did our row go?")
+            Some(Err(oops)) => panic!(oops),
+            None => panic!("where did our row go?")
         }
     }
 }
@@ -57,11 +57,11 @@ pub fn main() {
             match typical_usage(db) {
                 Ok(txt) => println!("item: {}", txt),
                 Err(oops) => {
-                    fail!("error: {} msg: {}", oops,
+                    panic!("error: {} msg: {}", oops,
                           db.errmsg())
                 }
             }
         },
-        Err(oops) => fail!(oops)
+        Err(oops) => panic!(oops)
     }
 }
