@@ -155,8 +155,8 @@ mod tests {
                         });
                     Ok(())
                 },
-                None => fail!("no row"),
-                Some(Err(oops)) =>  fail!("error: {}", oops)
+                None => panic!("no row"),
+                Some(Err(oops)) =>  panic!("error: {}", oops)
             }
         }
         go().unwrap();

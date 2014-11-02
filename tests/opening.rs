@@ -21,7 +21,7 @@ pub fn main() {
 
     match io(access) {
         Ok(x) => println!("Ok: {}", x),
-        Err(oops) => fail!("oops!: {}", oops)
+        Err(oops) => panic!("oops!: {}", oops)
     }
 }
 
