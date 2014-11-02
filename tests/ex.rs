@@ -19,7 +19,7 @@ struct Person {
 pub fn main() {
     match io() {
         Ok(ppl) => println!("Found people: {}", ppl),
-        Err(oops) => fail!(oops)
+        Err(oops) => panic!(oops)
     }
 }
 
