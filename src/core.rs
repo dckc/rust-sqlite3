@@ -111,7 +111,7 @@ use ffi;
 /// See SqliteResult, SqliteError for typical return code handling.
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum SqliteOk {
     SQLITE_OK = 0
 }

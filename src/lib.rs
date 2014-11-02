@@ -84,7 +84,7 @@
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
 #![feature(unsafe_destructor)]
-#![warn(missing_doc)]
+#![warn(missing_docs)]
 
 extern crate libc;
 extern crate time;
@@ -101,7 +101,7 @@ pub mod types;
 /// bindgen-bindings to libsqlite3
 #[allow(non_camel_case_types, non_snake_case)]
 #[allow(dead_code)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub mod ffi;
 
 pub mod access;
@@ -254,7 +254,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum SqliteError {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
@@ -288,7 +288,7 @@ pub enum SqliteError {
 /// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
-#[allow(missing_doc)]
+#[allow(missing_docs)]
 pub enum ColumnType {
     SQLITE_INTEGER = 1,
     SQLITE_FLOAT   = 2,
