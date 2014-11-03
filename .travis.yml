@@ -10,6 +10,10 @@ language: rust
 env:
   global:
     - secure: eaw/De/05/yXkxnoeXzHzmbD1KVN3+6W2M5NRQH7Yxm8ep2WD4DUpUpa/bQy5VzwgDoptVIfvKBliLQrbtKkEZZAFvIr3x0bm431hB5y6kj3wbWazsSJ7RU0mYksaraDdCnQXxsqmz/oWGGOFgy7+UAkeOktx60+x6/wqbYYKRk=
+before_install:
+ - echo "yes" | sudo add-apt-repository ppa:travis-ci/sqlite3
+ - sudo apt-get update -qq
+ - sudo apt-get install -qq libsqlite3-dev
 script:
   - cargo build
   - cargo test

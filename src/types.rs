@@ -1,7 +1,7 @@
 //! Type conversions for binding parameters and getting query results.
 
 use super::{PreparedStatement, ResultRow};
-use super::{SqliteResult, SQLITE_MISMATCH};
+use super::{SqliteError, SqliteResult, SQLITE_MISMATCH};
 use super::{SQLITE_NULL};
 use time;
 
@@ -95,14 +95,12 @@ impl FromSql for String {
 pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
-    /// TODO: propagate error message
-    #[allow(unused_variables)]
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
-            None => Err(SQLITE_MISMATCH),
+            None => Err(SqliteError::new(SQLITE_MISMATCH, "null".to_string(), None)),
             Some(txt) => match time::strptime(txt.as_slice(), SQLITE_TIME_FMT) {
                 Ok(tm) => Ok(tm),
-                Err(msg) => Err(SQLITE_MISMATCH)
+                Err(msg) => Err(SqliteError::new(SQLITE_MISMATCH, format!("{}", msg), None))
             }
         }
     }
@@ -113,7 +111,7 @@ impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
         match time::at_utc(*self).strftime(SQLITE_TIME_FMT) {
             Ok(text) => s.bind_text(ix, text.as_slice()),
-            Err(_oops) => Err(SQLITE_MISMATCH)
+            Err(oops) => Err(SqliteError::new(SQLITE_MISMATCH, format!("{}", oops), None))
         }
     }
 }
@@ -135,11 +133,10 @@ mod tests {
     #[test]
     fn get_tm() {
         fn go() -> SqliteResult<()> {
-            let mut conn = try!(DatabaseConnection::in_memory()
-                                .map_err(|(code, _msg)| code));
+            let mut conn = try!(DatabaseConnection::in_memory());
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
-            let mut results = stmt.execute();
+            let mut results = stmt.exec_query();
             match results.step() {
                 Some(Ok(ref mut row)) => {
                     assert_eq!(

@@ -2,7 +2,7 @@ extern crate sqlite3;
 
 use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
 
-fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
+fn convenience_exec() -> Result<DatabaseConnection, SqliteError> {
     let mut conn = try!(DatabaseConnection::in_memory());
 
     try!(conn.exec("
@@ -10,8 +10,7 @@ fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
                    id integer,
                    description varchar(40),
                    price integer
-                   )")
-         .map_err(|code| (code, conn.errmsg())));
+                   )"));
 
     Ok(conn)
 }
@@ -21,18 +20,17 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         let mut stmt = try!(conn.prepare(
             "insert into items (id, description, price)
            values (1, 'stuff', 10)"));
-        let mut results = stmt.execute();
-        match results.step() {
-            None => (),
-            Some(Ok(_)) => panic!("row from insert?!"),
-            Some(Err(oops)) => panic!(oops)
+        match stmt.exec() {
+            Ok(_) => (),
+            Err(oops) => panic!(oops)
         };
     }
     assert_eq!(conn.changes(), 1);
+    assert_eq!(conn.last_insert_rowid(), 1);
     {
         let mut stmt = try!(conn.prepare(
             "select * from items"));
-        let mut results = stmt.execute();
+        let mut results = stmt.exec_query();
         match results.step() {
             Some(Ok(ref mut row1)) => {
                 let id = row1.column_int(0);

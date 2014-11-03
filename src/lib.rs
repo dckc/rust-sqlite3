@@ -41,9 +41,9 @@
 //!     }
 //! }
 //!
-//! fn io() -> Result<Vec<Person>, (SqliteError, String)> {
+//! fn io() -> Result<Vec<Person>, SqliteError> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//!     with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+//!     with_conn(&mut conn)
 //! }
 //!
 //! fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
@@ -89,11 +89,13 @@
 extern crate libc;
 extern crate time;
 
+use std::fmt;
 use std::fmt::Show;
 
 pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 pub use types::{FromSql, ToSql};
+pub use consts::{OpenFlags};
 
 pub mod core;
 pub mod types;
@@ -103,6 +105,9 @@ pub mod types;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod ffi;
+
+#[allow(missing_docs)]
+pub mod consts;
 
 pub mod access;
 
@@ -131,12 +136,7 @@ impl DatabaseUpdate for core::DatabaseConnection {
                        values: &[&ToSql]) -> SqliteResult<uint> {
         let check = {
             try!(bind_values(stmt, values));
-            let mut results = stmt.execute();
-            match results.step() {
-                None => Ok(()),
-                Some(Ok(_row)) => Err(SQLITE_MISUSE),
-                Some(Err(e)) => Err(e)
-            }
+            stmt.exec()
         };
         check.map(|_ok| self.changes())
     }
@@ -162,7 +162,7 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
              each_row: |&mut ResultRow|: 's -> SqliteResult<()>
              ) -> SqliteResult<()> {
         try!(bind_values(self, values));
-        let mut results = self.execute();
+        let mut results = self.exec_query();
         loop {
             match results.step() {
                 None => break,
@@ -175,6 +175,10 @@ impl<'s> Query<'s> for core::PreparedStatement<'s> {
 }
 
 fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
+    if values.len() < s.bind_parameter_count() { // may be useful when a value is missing but pedantic when intentional
+        let msg = format!("incorrect argument count: have {} want {}", values.len(), s.bind_parameter_count());
+        return Err(SqliteError::new(SQLITE_MISUSE, msg, None));
+    }
     for (ix, v) in values.iter().enumerate() {
         try!(v.to_sql(s, ix + 1));
     }
@@ -192,7 +196,7 @@ pub trait ResultRowAccess {
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
 
     /// Try to get `T` type result value from `idx`th column of a row.
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
+    fn get_opt<I: RowIndex + Show, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
 impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
@@ -203,10 +207,10 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
         }
     }
 
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
+    fn get_opt<I: RowIndex + Show, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
-            None => Err(SQLITE_MISUSE)
+            None => Err(SqliteError::new(SQLITE_MISUSE, format!("invalid column {}", idx), None))
         }
     }
 
@@ -252,10 +256,10 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[deriving(Clone, Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
-pub enum SqliteError {
+pub enum SqliteErrorCode {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
     SQLITE_PERM      =  3,
@@ -284,6 +288,102 @@ pub enum SqliteError {
     SQLITE_NOTADB    = 26
 }
 
+#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+// TODO: use, test this
+enum SqliteLogLevel {
+    SQLITE_NOTICE    = 27,
+    SQLITE_WARNING   = 28,
+}
+
+/// Extended result codes
+#[deriving(Clone, Show, PartialEq, Eq, FromPrimitive)]
+#[allow(non_camel_case_types)]
+#[allow(missing_docs)]
+pub enum ExtendedResultCode {
+    SQLITE_IOERR_READ              = (SQLITE_IOERR as int | (1<<8)),
+    SQLITE_IOERR_SHORT_READ        = (SQLITE_IOERR as int | (2<<8)),
+    SQLITE_IOERR_WRITE             = (SQLITE_IOERR as int | (3<<8)),
+    SQLITE_IOERR_FSYNC             = (SQLITE_IOERR as int | (4<<8)),
+    SQLITE_IOERR_DIR_FSYNC         = (SQLITE_IOERR as int | (5<<8)),
+    SQLITE_IOERR_TRUNCATE          = (SQLITE_IOERR as int | (6<<8)),
+    SQLITE_IOERR_FSTAT             = (SQLITE_IOERR as int | (7<<8)),
+    SQLITE_IOERR_UNLOCK            = (SQLITE_IOERR as int | (8<<8)),
+    SQLITE_IOERR_RDLOCK            = (SQLITE_IOERR as int | (9<<8)),
+    SQLITE_IOERR_DELETE            = (SQLITE_IOERR as int | (10<<8)),
+    SQLITE_IOERR_BLOCKED           = (SQLITE_IOERR as int | (11<<8)),
+    SQLITE_IOERR_NOMEM             = (SQLITE_IOERR as int | (12<<8)),
+    SQLITE_IOERR_ACCESS            = (SQLITE_IOERR as int | (13<<8)),
+    SQLITE_IOERR_CHECKRESERVEDLOCK = (SQLITE_IOERR as int | (14<<8)),
+    SQLITE_IOERR_LOCK              = (SQLITE_IOERR as int | (15<<8)),
+    SQLITE_IOERR_CLOSE             = (SQLITE_IOERR as int | (16<<8)),
+    SQLITE_IOERR_DIR_CLOSE         = (SQLITE_IOERR as int | (17<<8)),
+    SQLITE_IOERR_SHMOPEN           = (SQLITE_IOERR as int | (18<<8)),
+    SQLITE_IOERR_SHMSIZE           = (SQLITE_IOERR as int | (19<<8)),
+    SQLITE_IOERR_SHMLOCK           = (SQLITE_IOERR as int | (20<<8)),
+    SQLITE_IOERR_SHMMAP            = (SQLITE_IOERR as int | (21<<8)),
+    SQLITE_IOERR_SEEK              = (SQLITE_IOERR as int | (22<<8)),
+    SQLITE_IOERR_DELETE_NOENT      = (SQLITE_IOERR as int | (23<<8)),
+    SQLITE_IOERR_MMAP              = (SQLITE_IOERR as int | (24<<8)),
+    SQLITE_IOERR_GETTEMPPATH       = (SQLITE_IOERR as int | (25<<8)),
+    SQLITE_IOERR_CONVPATH          = (SQLITE_IOERR as int | (26<<8)),
+    SQLITE_LOCKED_SHAREDCACHE      = (SQLITE_LOCKED as int |  (1<<8)),
+    SQLITE_BUSY_RECOVERY           = (SQLITE_BUSY   as int |  (1<<8)),
+    SQLITE_BUSY_SNAPSHOT           = (SQLITE_BUSY   as int |  (2<<8)),
+    SQLITE_CANTOPEN_NOTEMPDIR      = (SQLITE_CANTOPEN as int | (1<<8)),
+    SQLITE_CANTOPEN_ISDIR          = (SQLITE_CANTOPEN as int | (2<<8)),
+    SQLITE_CANTOPEN_FULLPATH       = (SQLITE_CANTOPEN as int | (3<<8)),
+    SQLITE_CANTOPEN_CONVPATH       = (SQLITE_CANTOPEN as int | (4<<8)),
+    SQLITE_CORRUPT_VTAB            = (SQLITE_CORRUPT as int | (1<<8)),
+    SQLITE_READONLY_RECOVERY       = (SQLITE_READONLY as int | (1<<8)),
+    SQLITE_READONLY_CANTLOCK       = (SQLITE_READONLY as int | (2<<8)),
+    SQLITE_READONLY_ROLLBACK       = (SQLITE_READONLY as int | (3<<8)),
+    SQLITE_READONLY_DBMOVED        = (SQLITE_READONLY as int | (4<<8)),
+    SQLITE_ABORT_ROLLBACK          = (SQLITE_ABORT as int | (2<<8)),
+    SQLITE_CONSTRAINT_CHECK        = (SQLITE_CONSTRAINT as int | (1<<8)),
+    SQLITE_CONSTRAINT_COMMITHOOK   = (SQLITE_CONSTRAINT as int | (2<<8)),
+    SQLITE_CONSTRAINT_FOREIGNKEY   = (SQLITE_CONSTRAINT as int | (3<<8)),
+    SQLITE_CONSTRAINT_FUNCTION     = (SQLITE_CONSTRAINT as int | (4<<8)),
+    SQLITE_CONSTRAINT_NOTNULL      = (SQLITE_CONSTRAINT as int | (5<<8)),
+    SQLITE_CONSTRAINT_PRIMARYKEY   = (SQLITE_CONSTRAINT as int | (6<<8)),
+    SQLITE_CONSTRAINT_TRIGGER      = (SQLITE_CONSTRAINT as int | (7<<8)),
+    SQLITE_CONSTRAINT_UNIQUE       = (SQLITE_CONSTRAINT as int | (8<<8)),
+    SQLITE_CONSTRAINT_VTAB         = (SQLITE_CONSTRAINT as int | (9<<8)),
+    SQLITE_CONSTRAINT_ROWID        = (SQLITE_CONSTRAINT as int |(10<<8)),
+    SQLITE_NOTICE_RECOVER_WAL      = (SQLITE_NOTICE as int | (1<<8)),
+    SQLITE_NOTICE_RECOVER_ROLLBACK = (SQLITE_NOTICE as int | (2<<8)),
+    SQLITE_WARNING_AUTOINDEX       = (SQLITE_WARNING as int | (1<<8)),
+    SQLITE_AUTH_USER               = (SQLITE_AUTH as int | (1<<8))
+}
+
+/// SQLite error details
+#[deriving(Clone, PartialEq, Eq)]
+pub struct SqliteError {
+    /// The error code.
+    pub code: SqliteErrorCode,
+    /// The error message.
+    pub msg: String,
+    /// Optional error detail.
+    pub detail: Option<String>,
+    /// Extended result code.
+    pub ext_code: Option<ExtendedResultCode>
+}
+
+impl SqliteError {
+    #[doc(hidden)]
+    pub fn new(code: SqliteErrorCode, msg: String, detail: Option<String>) -> SqliteError {
+        SqliteError{ code: code, msg: msg, detail: detail, ext_code: None }
+    }
+}
+
+impl fmt::Show for SqliteError {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        match self.detail {
+            Some(ref s) => write!(fmt, "{}, {}: {} ({})", self.code, self.ext_code, self.msg, s),
+            None => write!(fmt, "{}, {}: {}", self.code, self.ext_code, self.msg)
+        }
+    }
+}
 
 /// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -307,8 +407,7 @@ mod bind_tests {
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(DatabaseConnection::in_memory()
-                                    .map_err(|(code, _msg)| code));
+            let mut database = try!(DatabaseConnection::in_memory());
 
             try!(database.exec(
                 "BEGIN;
@@ -319,16 +418,16 @@ mod bind_tests {
             {
                 let mut tx = try!(database.prepare(
                     "INSERT INTO test (id, name, address) VALUES (?, ?, ?)"));
+                assert_eq!(tx.bind_parameter_count(), 3);
                 try!(tx.bind_int(1, 2));
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
-                let mut results = tx.execute();
-                assert!(results.step().is_none());
+                try!(tx.exec());
             }
             assert_eq!(database.changes(), 1);
 
             let mut q = try!(database.prepare("select * from test order by id"));
-            let mut rows = q.execute();
+            let mut rows = q.exec_query();
             match rows.step() {
                 Some(Ok(ref mut row)) => {
                     assert_eq!(row.get::<uint, i32>(0), 1);
@@ -355,10 +454,9 @@ mod bind_tests {
     }
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory()
-                          .map_err(|(code, _msg)| code));
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
-        let mut rows = s.execute();
+        let mut rows = s.exec_query();
         Ok(f(&mut rows))
     }
 
