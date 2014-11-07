@@ -94,6 +94,7 @@ use std::fmt::Show;
 pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 pub use types::{FromSql, ToSql};
+pub use consts::{OpenFlags};
 
 pub mod core;
 pub mod types;
@@ -103,6 +104,9 @@ pub mod types;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod ffi;
+
+#[allow(missing_doc)]
+pub mod consts;
 
 pub mod access;
 
