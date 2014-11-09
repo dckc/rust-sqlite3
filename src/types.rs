@@ -1,7 +1,11 @@
 //! Type conversions for binding parameters and getting query results.
 
 use super::{PreparedStatement, ResultRow};
-use super::{SqliteResult, SQLITE_MISMATCH};
+use super::{
+    SQLITE_MISMATCH,
+    SqliteError,
+    SqliteResult,
+};
 use super::{SQLITE_NULL};
 use time;
 
@@ -99,11 +103,15 @@ impl FromSql for time::Tm {
     #[allow(unused_variables)]
     fn from_sql(row: &mut ResultRow, col: uint) -> SqliteResult<time::Tm> {
         match row.column_text(col) {
-            None => Err(SQLITE_MISMATCH),
-            Some(txt) => match time::strptime(txt.as_slice(), SQLITE_TIME_FMT) {
-                Ok(tm) => Ok(tm),
-                Err(msg) => Err(SQLITE_MISMATCH)
-            }
+            Some(txt) => {
+                let t = time::strptime(txt.as_slice(), SQLITE_TIME_FMT)
+                    .unwrap(); // unit tests ensure SQLITE_TIME_FMT is ok
+                Ok(t)
+            },
+            None => Err(SqliteError{
+                kind: SQLITE_MISMATCH,
+                desc: "cannot decode utf-8",
+                detail: None})
         }
     }
 }
@@ -111,10 +119,9 @@ impl FromSql for time::Tm {
 
 impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: uint) -> SqliteResult<()> {
-        match time::at_utc(*self).strftime(SQLITE_TIME_FMT) {
-            Ok(text) => s.bind_text(ix, text.as_slice()),
-            Err(_oops) => Err(SQLITE_MISMATCH)
-        }
+        let timestr = time::at_utc(*self).strftime(SQLITE_TIME_FMT)
+            .unwrap(); // unit tests ensure SQLITE_TIME_FMT is ok
+        s.bind_text(ix, timestr.as_slice())
     }
 }
 
@@ -135,8 +142,7 @@ mod tests {
     #[test]
     fn get_tm() {
         fn go() -> SqliteResult<()> {
-            let mut conn = try!(DatabaseConnection::in_memory()
-                                .map_err(|(code, _msg)| code));
+            let mut conn = try!(DatabaseConnection::in_memory());
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
             let mut results = stmt.execute();

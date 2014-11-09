@@ -8,9 +8,12 @@
 //! ```rust
 //! extern crate sqlite3;
 //!
-//! use sqlite3::{DatabaseConnection, SqliteResult, SqliteError};
+//! use sqlite3::{
+//!     DatabaseConnection,
+//!     SqliteResult,
+//! };
 //!
-//! fn convenience_exec() -> Result<DatabaseConnection, (SqliteError, String)> {
+//! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
 //!
 //!     try!(conn.exec("
@@ -19,7 +22,7 @@
 //!                    description varchar(40),
 //!                    price integer
 //!                    )")
-//!        .map_err(|code| (code, conn.errmsg())));
+//!        .map_err(|err| err.with_detail(conn.errmsg())));
 //!
 //!     Ok(conn)
 //!  }
@@ -100,7 +103,13 @@ use std::ptr;
 use std::mem;
 use std::c_str;
 
-pub use super::{SqliteError, SqliteResult, ColumnType, SQLITE_NULL};
+pub use super::{
+    ColumnType,
+    SQLITE_NULL,
+    SqliteError,
+    SqliteErrorCode,
+    SqliteResult,
+};
 
 use ffi;
 
@@ -168,7 +177,7 @@ impl DatabaseConnection {
     /// Given explicit access to a database, attempt to connect to it.
     ///
     /// Note `SqliteError` code is accompanied by (copy) of `sqlite3_errmsg()`.
-    pub fn new<A: Access>(access: A) -> Result<DatabaseConnection, (SqliteError, String)> {
+    pub fn new<A: Access>(access: A) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
         match decode_result(result, "sqlite3_open") {
@@ -182,7 +191,7 @@ impl DatabaseConnection {
                 // sqlite3_close() when it is no longer required."
                 unsafe { ffi::sqlite3_close(db) };
 
-                Err((err, msg))
+                Err(err.with_detail(msg))
             }
         }
     }
@@ -192,7 +201,7 @@ impl DatabaseConnection {
     ///  - TODO: use support _v2 interface with flags
     ///  - TODO: integrate sqlite3_errmsg()
     #[unstable]
-    pub fn in_memory() -> Result<DatabaseConnection, (SqliteError, String)> {
+    pub fn in_memory() -> SqliteResult<DatabaseConnection> {
         struct InMemory;
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
@@ -446,7 +455,7 @@ impl<'s> ResultSet<'s> {
                 Some(Ok(ResultRow{ rows: self }))
             },
             Some(SQLITE_DONE) => None,
-            None => Some(Err(from_i32::<SqliteError>(result).expect("step")))
+            None => Some(Err(error_result(result, "step")))
         }
     }
 }
@@ -558,12 +567,23 @@ impl<'s, 'r> ResultRow<'s, 'r> {
 ///
 /// Note the use of the `Result<T, E>` pattern to distinguish errors in
 /// the type system.
-pub fn decode_result(result: c_int, context: &str) -> SqliteResult<()> {
+///
+/// # Panic
+///
+/// Panics if result is not a SQLITE error code.
+pub fn decode_result(result: c_int, context: &'static str) -> SqliteResult<()> {
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
-        // .unwrap_or(SQLITE_ERROR)?
-        Err(from_i32::<SqliteError>(result).expect(context))
+        Err(error_result(result, context))
+    }
+}
+
+fn error_result(result: c_int, context: &'static str) -> SqliteError {
+    SqliteError {
+        kind: from_i32::<SqliteErrorCode>(result).unwrap(),
+        desc: context,
+        detail: None
     }
 }
 
@@ -588,8 +608,7 @@ mod tests {
     #[test]
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
-            let mut db = try!(DatabaseConnection::in_memory()
-                              .map_err(|(code, _msg)| code));
+            let mut db = try!(DatabaseConnection::in_memory());
             db.prepare("select 1 + 1").map( |_s| () )
         }
         go().unwrap();
@@ -597,8 +616,7 @@ mod tests {
 
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory()
-                          .map_err(|(code, _msg)| code));
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))

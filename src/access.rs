@@ -11,7 +11,7 @@
 
 use libc::c_int;
 
-use super::SqliteError;
+use super::SqliteResult;
 use core::{Access, DatabaseConnection};
 use ffi;
 
@@ -26,7 +26,7 @@ use ffi;
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
-pub fn open(filename: &str) -> Result<DatabaseConnection, (SqliteError, String)> {
+pub fn open(filename: &str) -> SqliteResult<DatabaseConnection> {
     DatabaseConnection::new(ByFilename { filename: filename })
 }
 

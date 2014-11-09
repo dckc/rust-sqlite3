@@ -4,9 +4,13 @@ extern crate sqlite3;
 use time::Timespec;
 
 
-use sqlite3::{DatabaseConnection, DatabaseUpdate,
-              Query, ResultRowAccess,
-              SqliteResult, SqliteError};
+use sqlite3::{
+    DatabaseConnection,
+    DatabaseUpdate,
+    Query,
+    ResultRowAccess,
+    SqliteResult,
+};
 
 #[deriving(Show)]
 struct Person {
@@ -23,9 +27,9 @@ pub fn main() {
     }
 }
 
-fn io() -> Result<Vec<Person>, (SqliteError, String)> {
+fn io() -> SqliteResult<Vec<Person>> {
     let mut conn = try!(DatabaseConnection::in_memory());
-    with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+    with_conn(&mut conn).map_err(|err| err.with_detail(conn.errmsg()))
 }
 
 fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {

@@ -22,9 +22,13 @@
 //! use time::Timespec;
 //!
 //!
-//! use sqlite3::{DatabaseConnection, DatabaseUpdate,
-//!               Query, ResultRowAccess,
-//!               SqliteResult, SqliteError};
+//! use sqlite3::{
+//!     DatabaseConnection,
+//!     DatabaseUpdate,
+//!     Query,
+//!     ResultRowAccess,
+//!     SqliteResult,
+//! };
 //!
 //! #[deriving(Show)]
 //! struct Person {
@@ -41,9 +45,9 @@
 //!     }
 //! }
 //!
-//! fn io() -> Result<Vec<Person>, (SqliteError, String)> {
+//! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//!     with_conn(&mut conn).map_err(|code| (code, conn.errmsg()))
+//!     with_conn(&mut conn).map_err(|err| err.with_detail(conn.errmsg()))
 //! }
 //!
 //! fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
@@ -89,7 +93,9 @@
 extern crate libc;
 extern crate time;
 
+use std::error::{Error, FromError};
 use std::fmt::Show;
+use std::io::{IoError, OtherIoError};
 
 pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
@@ -134,7 +140,11 @@ impl DatabaseUpdate for core::DatabaseConnection {
             let mut results = stmt.execute();
             match results.step() {
                 None => Ok(()),
-                Some(Ok(_row)) => Err(SQLITE_MISUSE),
+                Some(Ok(_row)) => Err(SqliteError {
+                    kind: SQLITE_MISUSE,
+                    desc: "unexpected SQLITE_ROW from update",
+                    detail: None
+                }),
                 Some(Err(e)) => Err(e)
             }
         };
@@ -192,7 +202,7 @@ pub trait ResultRowAccess {
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
 
     /// Try to get `T` type result value from `idx`th column of a row.
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
+    fn get_opt<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
 impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
@@ -203,10 +213,14 @@ impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
         }
     }
 
-    fn get_opt<I: RowIndex, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
+    fn get_opt<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
-            None => Err(SQLITE_MISUSE)
+            None => Err(SqliteError {
+                kind: SQLITE_MISUSE,
+                desc: "no such row name/number",
+                detail: Some(format!("{}", idx))
+            })
         }
     }
 
@@ -255,7 +269,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
-pub enum SqliteError {
+pub enum SqliteErrorCode {
     SQLITE_ERROR     =  1,
     SQLITE_INTERNAL  =  2,
     SQLITE_PERM      =  3,
@@ -284,6 +298,45 @@ pub enum SqliteError {
     SQLITE_NOTADB    = 26
 }
 
+/// Error results
+#[deriving(Show, PartialEq, Eq)]
+pub struct SqliteError {
+    /// kind of error, by code
+    pub kind: SqliteErrorCode,
+    /// static error description
+    pub desc: &'static str,
+    /// dynamic detail (optional)
+    pub detail: Option<String>
+}
+
+impl SqliteError {
+    /// Use (a copy of) the database connection's last error message for detail.
+    pub fn with_detail(&self, message: String) -> SqliteError {
+        SqliteError {
+            kind: self.kind,
+            desc: self.desc,
+            detail: Some(message)
+        }
+    }
+}
+
+impl Error for SqliteError {
+    fn description(&self) -> &str { self.desc }
+    fn detail(&self) -> Option<String> { self.detail.clone() }
+    fn cause(&self) -> Option<&Error> { None }
+}
+
+impl FromError<SqliteError> for IoError {
+    /// TODO: specialize the kind according to sqlite errors
+    fn from_error(sqlerr: SqliteError) -> IoError {
+        IoError {
+            kind: OtherIoError,
+            desc: sqlerr.desc,
+            detail: sqlerr.detail
+        }
+    }
+}
+
 
 /// Fundamental Datatypes
 #[deriving(Show, PartialEq, Eq, FromPrimitive)]
@@ -307,8 +360,7 @@ mod bind_tests {
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
-            let mut database = try!(DatabaseConnection::in_memory()
-                                    .map_err(|(code, _msg)| code));
+            let mut database = try!(DatabaseConnection::in_memory());
 
             try!(database.exec(
                 "BEGIN;
@@ -355,8 +407,7 @@ mod bind_tests {
     }
 
     fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
-        let mut db = try!(DatabaseConnection::in_memory()
-                          .map_err(|(code, _msg)| code));
+        let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))
@@ -384,5 +435,26 @@ mod bind_tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
+    }
+
+    #[test]
+    fn err_with_detail() {
+        let io = || {
+            let mut conn = try!(DatabaseConnection::in_memory());
+            conn.exec("CREATE gobbledygook")
+                .map_err(|err| err.with_detail(conn.errmsg()))
+        };
+        
+        let go = || match io() {
+            Ok(_) => panic!(),
+            Err(oops) => {
+                format!("{}: {}: {}",
+                        oops.kind, oops.desc,
+                        oops.detail.unwrap())
+            }
+        };
+
+        let expected = "SQLITE_ERROR: sqlite3_exec: near \"gobbledygook\": syntax error";
+        assert_eq!(go().as_slice(), expected)
     }
 }

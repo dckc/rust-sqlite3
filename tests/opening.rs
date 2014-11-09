@@ -2,10 +2,14 @@ extern crate sqlite3;
 
 use std::os;
 
-use sqlite3::{Access,
-              DatabaseConnection, DatabaseUpdate,
-              Query, ResultRowAccess,
-              SqliteResult, SqliteError};
+use sqlite3::{
+    Access,
+    DatabaseConnection,
+    DatabaseUpdate,
+    Query,
+    ResultRowAccess,
+    SqliteResult,
+};
 use sqlite3::access;
 
 #[deriving(Show)]
@@ -24,11 +28,11 @@ pub fn main() {
     }
 }
 
-fn io<A: sqlite3::Access>(access: A) -> Result<Vec<Person>, (SqliteError, String)> {
+fn io<A: sqlite3::Access>(access: A) -> SqliteResult<Vec<Person>> {
     match DatabaseConnection::new(access) {
         Ok(ref mut conn) => match io2(conn) {
             Ok(ppl) => Ok(ppl),
-            Err(oops) => Err((oops, conn.errmsg()))
+            Err(oops) => Err(oops.with_detail(conn.errmsg()))
         },
         Err(oops) => Err(oops)
     }
