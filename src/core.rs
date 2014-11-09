@@ -112,6 +112,7 @@ pub use super::{
     SqliteResult,
 };
 
+use consts;
 use ffi;
 
 
@@ -155,9 +156,7 @@ impl Drop for DatabaseConnection {
     ///
     /// [1]: http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
-        // sqlite3_close_v2 was not introduced until 2012-09-03 (3.7.14)
-        // but we want to build on, e.g. travis, i.e. Ubuntu 12.04.
-        // let ok = unsafe { ffi::sqlite3_close_v2(self.db) };
+        // sqlite3_close_v2 is for gced languages.
         let ok = unsafe { ffi::sqlite3_close(self.db) };
         assert_eq!(ok, SQLITE_OK as c_int);
     }
@@ -181,7 +180,7 @@ impl DatabaseConnection {
     pub fn new<A: Access>(access: A) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
-        match decode_result(result, "sqlite3_open") {
+        match decode_result(result, "sqlite3_open_v2") {
             Ok(()) => Ok(DatabaseConnection { db: db }),
             Err(err) => {
                 let msg = DatabaseConnection::_errmsg(db);
@@ -199,7 +198,6 @@ impl DatabaseConnection {
 
     /// Create connection to an in-memory database.
     ///
-    ///  - TODO: use support _v2 interface with flags
     ///  - TODO: integrate sqlite3_errmsg()
     #[unstable]
     pub fn in_memory() -> SqliteResult<DatabaseConnection> {
@@ -207,7 +205,7 @@ impl DatabaseConnection {
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
                 ":memory:".with_c_str({
-                    |memory| unsafe { ffi::sqlite3_open(memory, db) }
+                    |memory| unsafe { ffi::sqlite3_open_v2(memory, db, consts::DEFAULT_OPEN_FLAGS.bits(), ptr::null()) }
                 })
             }
         }
@@ -336,9 +334,7 @@ impl<'db> Drop for PreparedStatement<'db> {
 
             // "If If the most recent evaluation of statement S
             // failed, then sqlite3_finalize(S) returns the
-            // appropriate error codethe most recent evaluation of
-            // statement S failed, then sqlite3_finalize(S) returns
-            // the appropriate error code"
+            // appropriate error code"
 
             // "The sqlite3_finalize(S) routine can be called at any
             // point during the life cycle of prepared statement S"
