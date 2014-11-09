@@ -186,9 +186,9 @@ fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteR
 pub trait ResultRowAccess {
     /// Get `T` type result value from `idx`th column of a row.
     ///
-    /// # Failure
+    /// # Panic
     ///
-    /// Fails if there is no such column or value.
+    /// Panics if there is no such column or value.
     fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
 
     /// Try to get `T` type result value from `idx`th column of a row.
