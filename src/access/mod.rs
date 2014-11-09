@@ -14,8 +14,13 @@ use std::ptr;
 
 use super::SqliteResult;
 use core::{Access, DatabaseConnection};
-use consts::{OpenFlags};
 use ffi;
+
+use access::flags::OpenFlags;
+
+// submodule KLUDGE around missing_docs for bitflags!()
+#[allow(missing_docs)]
+pub mod flags;
 
 /// Open a database by filename.
 ///
@@ -28,8 +33,12 @@ use ffi;
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
 #[stable]
-pub fn open(filename: &str, flags: OpenFlags) -> SqliteResult<DatabaseConnection> {
-    DatabaseConnection::new(ByFilename { filename: filename, flags: flags })
+pub fn open(filename: &str, flags: Option<OpenFlags>) -> SqliteResult<DatabaseConnection> {
+    DatabaseConnection::new(
+        ByFilename {
+            filename: filename,
+            flags: flags.unwrap_or_default()
+        })
 }
 
 /// Access to a database by filename
@@ -52,14 +61,18 @@ impl<'a> Access for ByFilename<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::default::Default;
     use super::ByFilename;
     use core::DatabaseConnection;
-    use consts;
 
 
     #[test]
     fn open_file_db() {
-        DatabaseConnection::new(ByFilename { filename: "/tmp/db1", flags: consts::DEFAULT_OPEN_FLAGS }).unwrap();
+        DatabaseConnection::new(
+            ByFilename {
+                filename: "/tmp/db1", flags: Default::default()
+            })
+            .unwrap();
     }
 }
 

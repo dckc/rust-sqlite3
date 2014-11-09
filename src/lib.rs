@@ -100,7 +100,6 @@ use std::io::{IoError, OtherIoError};
 pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 pub use types::{FromSql, ToSql};
-pub use consts::{OpenFlags};
 
 pub mod core;
 pub mod types;
@@ -110,9 +109,6 @@ pub mod types;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 pub mod ffi;
-
-#[allow(missing_docs)]
-pub mod consts;
 
 pub mod access;
 
@@ -314,7 +310,7 @@ pub struct SqliteError {
 }
 
 impl SqliteError {
-    /// Use (a copy of) the database connection's last error message for detail.
+    /// Replace (provide) detail
     pub fn with_detail(&self, message: String) -> SqliteError {
         SqliteError {
             kind: self.kind,

@@ -22,7 +22,7 @@
 //!                    description varchar(40),
 //!                    price integer
 //!                    )")
-//!        .map_err(|err| err.with_detail(conn.errmsg())));
+//!        .map_err(|e| e.with_detail(conn.errmsg())));
 //!
 //!     Ok(conn)
 //!  }
@@ -112,7 +112,6 @@ pub use super::{
     SqliteResult,
 };
 
-use consts;
 use ffi;
 
 
@@ -205,7 +204,7 @@ impl DatabaseConnection {
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
                 ":memory:".with_c_str({
-                    |memory| unsafe { ffi::sqlite3_open_v2(memory, db, consts::DEFAULT_OPEN_FLAGS.bits(), ptr::null()) }
+                    |memory| unsafe { ffi::sqlite3_open(memory, db) }
                 })
             }
         }

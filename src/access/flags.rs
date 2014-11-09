@@ -1,3 +1,4 @@
+use std::default::Default;
 use libc::c_int;
 
 /// These bit values are intended for use in the
@@ -13,7 +14,13 @@ bitflags!(
     const OPEN_FULLMUTEX      = 0x00010000,
     const OPEN_SHAREDCACHE    = 0x00020000,
     const OPEN_PRIVATECACHE   = 0x00040000,
-    const DEFAULT_OPEN_FLAGS  = OPEN_READWRITE.bits
-                              | OPEN_CREATE.bits,
   }
 )
+
+impl Default for OpenFlags {
+    fn default() -> OpenFlags {
+        OPEN_READWRITE
+            | OPEN_CREATE
+            | OPEN_NOMUTEX
+    }
+}
