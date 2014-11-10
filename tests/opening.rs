@@ -45,7 +45,6 @@ pub fn main() {
     fn use_access<A: Access>(access: A) -> IoResult<Vec<Person>> {
         let mut conn = try!(DatabaseConnection::new(access));
         make_people(&mut conn)
-            .map_err(|e| e.with_detail(conn.errmsg()))
             .map_err(|e| FromError::from_error(e))
     }
 

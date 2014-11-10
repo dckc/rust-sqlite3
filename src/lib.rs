@@ -47,10 +47,7 @@
 //!
 //! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//!     with_conn(&mut conn).map_err(|err| err.with_detail(conn.errmsg()))
-//! }
 //!
-//! fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
@@ -309,17 +306,6 @@ pub struct SqliteError {
     pub detail: Option<String>
 }
 
-impl SqliteError {
-    /// Replace (provide) detail
-    pub fn with_detail(&self, message: String) -> SqliteError {
-        SqliteError {
-            kind: self.kind,
-            desc: self.desc,
-            detail: Some(message)
-        }
-    }
-}
-
 impl Error for SqliteError {
     fn description(&self) -> &str { self.desc }
     fn detail(&self) -> Option<String> { self.detail.clone() }
@@ -442,7 +428,6 @@ mod bind_tests {
         let io = || {
             let mut conn = try!(DatabaseConnection::in_memory());
             conn.exec("CREATE gobbledygook")
-                .map_err(|err| err.with_detail(conn.errmsg()))
         };
         
         let go = || match io() {

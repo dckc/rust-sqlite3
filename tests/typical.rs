@@ -13,8 +13,7 @@ fn convenience_exec() -> SqliteResult<DatabaseConnection> {
                    id integer,
                    description varchar(40),
                    price integer
-                   )")
-         .map_err(|err| err.with_detail(conn.errmsg())));
+                   )"));
 
     Ok(conn)
 }

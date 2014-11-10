@@ -29,10 +29,7 @@ pub fn main() {
 
 fn io() -> SqliteResult<Vec<Person>> {
     let mut conn = try!(DatabaseConnection::in_memory());
-    with_conn(&mut conn).map_err(|err| err.with_detail(conn.errmsg()))
-}
 
-fn with_conn(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
     try!(conn.exec("CREATE TABLE person (
                  id              SERIAL PRIMARY KEY,
                  name            VARCHAR NOT NULL,
