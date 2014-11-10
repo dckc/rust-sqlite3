@@ -22,9 +22,6 @@ after_script:
   - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
 
 
-# We rely on libsqlite3-dev, which seems to be part of the default
-# travis-ci build environment.
-
 # In travis-ci-rust-example, it just has:
 #   language: rust
 # but this doesn't seem to suffice for building docs.
