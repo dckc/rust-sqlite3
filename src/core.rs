@@ -103,13 +103,17 @@ use std::mem;
 use std::c_str;
 use std::time::Duration;
 
+use self::SqliteOk::SQLITE_OK;
+use self::Step::{SQLITE_ROW, SQLITE_DONE};
+
 pub use super::{
-    ColumnType,
-    SQLITE_NULL,
     SqliteError,
     SqliteErrorCode,
     SqliteResult,
 };
+
+pub use super::ColumnType;
+pub use super::ColumnType::SQLITE_NULL;
 
 use ffi;
 

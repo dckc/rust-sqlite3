@@ -98,6 +98,8 @@ pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
 pub use types::{FromSql, ToSql};
 
+use self::SqliteErrorCode::SQLITE_MISUSE;
+
 pub mod core;
 pub mod types;
 

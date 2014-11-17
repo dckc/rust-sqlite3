@@ -2,11 +2,13 @@
 
 use super::{PreparedStatement, ResultRow};
 use super::{
-    SQLITE_MISMATCH,
     SqliteError,
     SqliteResult,
 };
-use super::{SQLITE_NULL};
+use super::ColumnType::SQLITE_NULL;
+use super::SqliteErrorCode::SQLITE_MISMATCH;
+
+
 use time;
 
 /// Values that can be bound to parameters in prepared statements.
