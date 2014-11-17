@@ -160,7 +160,7 @@ mod tests {
                              tm_wday: 0,
                              tm_yday: 0,
                              tm_isdst: 0,
-                             tm_gmtoff: 0,
+                             tm_utcoff: 0,
                              tm_nsec: 0
                         });
                     Ok(())

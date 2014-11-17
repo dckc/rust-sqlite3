@@ -6,3 +6,6 @@ authors = ["Dan Connolly <dckc@madmode.com>"]
 
 [lib]
 name = "sqlite3"
+
+[dependencies.time]
+git = "https://github.com/rust-lang/time"
