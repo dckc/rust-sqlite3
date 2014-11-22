@@ -52,7 +52,7 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let mut ppl = vec!();
     try!(stmt.query(
-        [], |row| {
+        &[], |row| {
             ppl.push(Person {
                 id: row.get("id"),
                 name: row.get("name"),

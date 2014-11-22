@@ -53,7 +53,7 @@ pub fn main() {
         Err(oops) => {
             std::os::set_exit_status(1);
             // writeln!() macro acts like a statement; hence the extra ()s
-            (writeln!(std::io::stderr(), "oops!: {}", oops)).unwrap()
+            (writeln!(&mut std::io::stderr(), "oops!: {}", oops)).unwrap()
         }
     };
 }
@@ -74,7 +74,7 @@ fn make_people(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
     {
         let mut tx = try!(conn.prepare("INSERT INTO person (id, name)
                            VALUES (0, 'Dan')"));
-        let changes = try!(conn.update(&mut tx, []));
+        let changes = try!(conn.update(&mut tx, &[]));
         assert_eq!(changes, 1);
     }
 
@@ -82,7 +82,7 @@ fn make_people(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
 
     let mut ppl = vec!();
     try!(stmt.query(
-        [], |row| {
+        &[], |row| {
             ppl.push(Person {
                 id: row.get(0u),
                 name: row.get(1u)
