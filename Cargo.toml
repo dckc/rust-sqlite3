@@ -4,6 +4,18 @@ name = "rust-sqlite"
 version = "0.1.1"
 authors = ["Dan Connolly <dckc@madmode.com>"]
 
+exclude = [
+    ".hg/*",
+    "*.orig",
+    "*~",
+]
+
+description = "Rustic bindings for sqlite3"
+repository = "https://github.com/dckc/rust-sqlite3"
+readme = "README.md"
+
+license = "MIT"
+
 [lib]
 name = "sqlite3"
 
