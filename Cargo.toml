@@ -20,4 +20,4 @@ license = "MIT"
 name = "sqlite3"
 
 [dependencies.time]
-git = "https://github.com/rust-lang/time"
+time = "~0.0.3"
