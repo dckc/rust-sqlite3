@@ -730,7 +730,7 @@ mod tests {
             db.prepare("select bogus")
         };
         let err = go().err().unwrap();
-        assert_eq!(err.detail(), Some("no such column: bogus".into_string()))
+        assert_eq!(err.detail(), Some("no such column: bogus".to_string()))
     }
 
     #[test]
