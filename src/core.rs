@@ -122,7 +122,7 @@ use ffi;
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteOk {

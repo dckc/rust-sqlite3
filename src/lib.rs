@@ -107,6 +107,7 @@ pub mod types;
 #[allow(non_camel_case_types, non_snake_case)]
 #[allow(dead_code)]
 #[allow(missing_docs)]
+#[allow(missing_copy_implementations)]  // until I figure out rust-bindgen #89
 pub mod ffi;
 
 pub mod access;
@@ -265,7 +266,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteErrorCode {
@@ -327,7 +328,7 @@ impl FromError<SqliteError> for IoError {
 
 
 /// Fundamental Datatypes
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum ColumnType {
