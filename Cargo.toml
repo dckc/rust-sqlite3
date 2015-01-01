@@ -20,4 +20,4 @@ license = "MIT"
 name = "sqlite3"
 
 [dependencies.time]
-time = "~0.0.3"
+time = "0.1.5"
