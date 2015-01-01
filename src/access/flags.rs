@@ -15,7 +15,7 @@ bitflags!(
     const OPEN_SHAREDCACHE    = 0x00020000,
     const OPEN_PRIVATECACHE   = 0x00040000,
   }
-)
+);
 
 impl Default for OpenFlags {
     fn default() -> OpenFlags {
