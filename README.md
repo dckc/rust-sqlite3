@@ -9,6 +9,18 @@ Share and enjoy. LICENSE: MIT.
 [dckc]: http://www.madmode.com/
 
 
+## Installation
+
+With Cargo, add the following to your `Cargo.toml`
+
+    [dependencies.rust-sqlite]
+    git = "https://github.com/dckc/rust-sqlite3.git"
+
+And run
+    
+    cargo build
+
+
 ## Documentation, Status
 
 [rust-sqlite3 package documentation][docs] is hosted on rust-ci. Three
