@@ -30,7 +30,7 @@
 //!     SqliteResult,
 //! };
 //!
-//! #[deriving(Show)]
+//! #[derive(Show)]
 //! struct Person {
 //!     id: i32,
 //!     name: String,
@@ -266,7 +266,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteErrorCode {
@@ -299,7 +299,7 @@ pub enum SqliteErrorCode {
 }
 
 /// Error results
-#[deriving(Show, PartialEq, Eq)]
+#[derive(Show, PartialEq, Eq)]
 pub struct SqliteError {
     /// kind of error, by code
     pub kind: SqliteErrorCode,
@@ -328,7 +328,7 @@ impl FromError<SqliteError> for IoError {
 
 
 /// Fundamental Datatypes
-#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum ColumnType {

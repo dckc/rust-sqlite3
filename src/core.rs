@@ -122,7 +122,7 @@ use ffi;
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[deriving(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteOk {
@@ -130,7 +130,7 @@ pub enum SqliteOk {
 }
 
 
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[derive(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 // TODO: use, test this
 enum SqliteLogLevel {
@@ -475,7 +475,7 @@ pub struct ResultSet<'s> {
     statement: &'s mut PreparedStatement<'s>,
 }
 
-#[deriving(Show, PartialEq, Eq, FromPrimitive)]
+#[derive(Show, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 enum Step {
     SQLITE_ROW       = 100,
