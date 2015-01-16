@@ -39,11 +39,11 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         match results.step() {
             Some(Ok(ref mut row1)) => {
                 let id = row1.column_int(0);
-                let desc_opt = row1.column_text(1).expect("no desc?!");
+                let desc_opt = row1.column_text(1);
                 let price = row1.column_int(2);
 
                 assert_eq!(id, 1);
-                assert_eq!(desc_opt, "stuff".to_string());
+                assert_eq!(desc_opt, format!("stuff"));
                 assert_eq!(price, 10);
 
                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
@@ -60,8 +60,8 @@ pub fn main() {
             match typical_usage(db) {
                 Ok(txt) => println!("item: {}", txt),
                 Err(oops) => {
-                    panic!("error: {} msg: {}", oops,
-                          db.errmsg())
+                    panic!("error: {:?} msg: {}", oops,
+                           db.errmsg())
                 }
             }
         },

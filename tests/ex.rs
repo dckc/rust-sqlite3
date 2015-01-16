@@ -12,7 +12,7 @@ use sqlite3::{
     SqliteResult,
 };
 
-#[deriving(Show)]
+#[derive(Show)]
 struct Person {
     id: i32,
     name: String,
@@ -22,7 +22,7 @@ struct Person {
 
 pub fn main() {
     match io() {
-        Ok(ppl) => println!("Found people: {}", ppl),
+        Ok(ppl) => println!("Found people: {:?}", ppl),
         Err(oops) => panic!(oops)
     }
 }
@@ -38,7 +38,7 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let me = Person {
         id: 0,
-        name: "Dan".to_string(),
+        name: format!("Dan"),
         time_created: time::get_time(),
     };
     {
@@ -52,11 +52,11 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let mut ppl = vec!();
     try!(stmt.query(
-        &[], |row| {
+        &[], &mut |&mut: row| {
             ppl.push(Person {
                 id: row.get("id"),
                 name: row.get("name"),
-                time_created: row.get(2u)
+                time_created: row.get(2)
             });
             Ok(())
         }));

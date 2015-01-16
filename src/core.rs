@@ -96,11 +96,12 @@
 //!   - `ResultRow` is a lifetime for access to the columns of one row.
 //!
 
-use libc::{c_int};
+use libc::{c_int, c_char};
+use std::ffi as std_ffi;
+use std::mem;
 use std::num::from_i32;
 use std::ptr;
-use std::mem;
-use std::c_str;
+use std::str;
 use std::time::Duration;
 
 use self::SqliteOk::SQLITE_OK;
@@ -115,7 +116,7 @@ pub use super::{
 pub use super::ColumnType;
 pub use super::ColumnType::SQLITE_NULL;
 
-use ffi;
+use ffi; // TODO: move to sqlite3-sys crate
 
 
 /// Successful result
@@ -220,9 +221,8 @@ impl DatabaseConnection {
         struct InMemory;
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
-                ":memory:".with_c_str({
-                    |memory| unsafe { ffi::sqlite3_open(memory, db) }
-                })
+                let c_memory = str_charstar(":memory:").as_ptr();
+                unsafe { ffi::sqlite3_open(c_memory, db) }
             }
         }
         DatabaseConnection::new(InMemory)
@@ -242,15 +242,15 @@ impl DatabaseConnection {
     /// return a &'x str?*
     #[unstable]
     pub fn prepare_with_offset<'db>(&'db mut self, sql: &str)
-                                    -> SqliteResult<(PreparedStatement<'db>, uint)> {
+                                    -> SqliteResult<(PreparedStatement<'db>, usize)> {
         let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
-        let z_sql = sql.as_ptr() as *const ::libc::c_char;
+        let z_sql = str_charstar(sql).as_ptr();
         let n_byte = sql.len() as c_int;
         let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
         match decode_result(r, "sqlite3_prepare_v2", maybe(self.detailed, self.db)) {
             Ok(()) => {
-                let offset = tail as uint - z_sql as uint;
+                let offset = tail as usize - z_sql as usize;
                 Ok((PreparedStatement { stmt: stmt , detailed: self.detailed }, offset))
             },
             Err(code) => Err(code)
@@ -272,17 +272,11 @@ impl DatabaseConnection {
     }
 
     fn _errmsg(db: *mut ffi::sqlite3) -> String {
-        let result = unsafe { ffi::sqlite3_errmsg(db) };
-        if result == ptr::null() {
-            // returning Option<String> doesn't seem worthwhile.
-            "".to_string()
-        } else {
-            let bytes = unsafe { c_str::CString::new(result, false) };
-            match bytes.as_str() {
-                Some(msg) => msg.to_string(),
-                None => "".to_string()
-            }
-        }
+        let errmsg = unsafe { ffi::sqlite3_errmsg(db) };
+        match errmsg != ptr::null() {
+            true => charstar_str(&(errmsg)),
+            false => "" // returning Option<String> doesn't seem worthwhile.
+        }.to_string()
     }
 
     /// One-Step Query Execution Interface
@@ -295,9 +289,11 @@ impl DatabaseConnection {
     #[unstable]
     pub fn exec(&mut self, sql: &str) -> SqliteResult<()> {
         let db = self.db;
-        let result = sql.with_c_str(
-            |c_sql| unsafe { ffi::sqlite3_exec(db, c_sql, None,
-                                               ptr::null_mut(), ptr::null_mut()) });
+        let c_sql = std_ffi::CString::from_slice(sql.as_bytes()).as_ptr();
+        let result = unsafe {
+            ffi::sqlite3_exec(db, c_sql, None,
+                              ptr::null_mut(), ptr::null_mut())
+        };
         decode_result(result, "sqlite3_exec", maybe(self.detailed, self.db))
     }
 
@@ -306,10 +302,10 @@ impl DatabaseConnection {
     /// statement.
     ///
     /// cf `sqlite3_changes`.
-    pub fn changes(&self) -> uint {
+    pub fn changes(&self) -> u64 {
         let db = self.db;
         let count = unsafe { ffi::sqlite3_changes(db) };
-        count as uint
+        count as u64
     }
 
     /// Set a busy timeout and clear any previously set handler.
@@ -336,6 +332,17 @@ impl DatabaseConnection {
 }
 
 
+/// Convert from sqlite3 API utf8 to rust str.
+fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> &'a str {
+    unsafe { str::from_utf8_unchecked(std_ffi::c_str_to_bytes(utf_bytes)) }
+}
+
+/// Convenience function to get a CString from a str
+#[inline(always)]
+pub fn str_charstar<'a>(s: &'a str) -> std_ffi::CString {
+    std_ffi::CString::from_slice(s.as_bytes())
+}
+
 /// A prepared statement.
 pub struct PreparedStatement<'db> {
     stmt: *mut ffi::sqlite3_stmt,
@@ -361,6 +368,10 @@ impl<'db> Drop for PreparedStatement<'db> {
     }
 }
 
+
+/// Type for picking out a bind parameter.
+/// 1-indexed
+pub type ParamIx = u16;
 
 /// A compiled prepared statement that may take parameters.
 /// **Note:** "The leftmost SQL parameter has an index of 1."[1]
@@ -392,28 +403,28 @@ impl<'db> PreparedStatement<'db> {
     }
 
     /// Bind null to a statement parameter.
-    pub fn bind_null(&mut self, i: uint) -> SqliteResult<()> {
+    pub fn bind_null(&mut self, i: ParamIx) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_null(self.stmt, ix ) };
         decode_result(r, "sqlite3_bind_null", self.detail_db())
     }
 
     /// Bind an int to a statement parameter.
-    pub fn bind_int(&mut self, i: uint, value: i32) -> SqliteResult<()> {
+    pub fn bind_int(&mut self, i: ParamIx, value: i32) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_int(self.stmt, ix, value) };
         decode_result(r, "sqlite3_bind_int", self.detail_db())
     }
 
     /// Bind an int64 to a statement parameter.
-    pub fn bind_int64(&mut self, i: uint, value: i64) -> SqliteResult<()> {
+    pub fn bind_int64(&mut self, i: ParamIx, value: i64) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_int64(self.stmt, ix, value) };
         decode_result(r, "sqlite3_bind_int64", self.detail_db())
     }
 
     /// Bind a double to a statement parameter.
-    pub fn bind_double(&mut self, i: uint, value: f64) -> SqliteResult<()> {
+    pub fn bind_double(&mut self, i: ParamIx, value: f64) -> SqliteResult<()> {
         let ix = i as c_int;
         let r = unsafe { ffi::sqlite3_bind_double(self.stmt, ix, value) };
         decode_result(r, "sqlite3_bind_double", self.detail_db())
@@ -423,14 +434,13 @@ impl<'db> PreparedStatement<'db> {
     ///
     /// *TODO: support binding without copying strings, blobs*
     #[unstable]
-    pub fn bind_text(&mut self, i: uint, value: &str) -> SqliteResult<()> {
+    pub fn bind_text(&mut self, i: ParamIx, value: &str) -> SqliteResult<()> {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
-        let transient = unsafe { mem::transmute(-1i) };
+        let transient = unsafe { mem::transmute(-1 as isize) };
+        let c_value = str_charstar(value).as_ptr();
         let len = value.len() as c_int;
-        let r = value.with_c_str( |_v| {
-            unsafe { ffi::sqlite3_bind_text(self.stmt, ix, _v, len, transient) }
-        });
+        let r = unsafe { ffi::sqlite3_bind_text(self.stmt, ix, c_value, len, transient) };
         decode_result(r, "sqlite3_bind_text", self.detail_db())
     }
 
@@ -438,10 +448,10 @@ impl<'db> PreparedStatement<'db> {
     ///
     /// *TODO: support binding without copying strings, blobs*
     #[unstable]
-    pub fn bind_blob(&mut self, i: uint, value: &[u8]) -> SqliteResult<()> {
+    pub fn bind_blob(&mut self, i: ParamIx, value: &[u8]) -> SqliteResult<()> {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
-        let transient = unsafe { mem::transmute(-1i) };
+        let transient = unsafe { mem::transmute(-1 as isize) };
         let len = value.len() as c_int;
         // from &[u8] to &[i8]
         let val = unsafe { mem::transmute(value.as_ptr()) };
@@ -457,9 +467,9 @@ impl<'db> PreparedStatement<'db> {
 
     /// Return the number of SQL parameters.
     /// If parameters of the ?NNN form are used, there may be gaps in the list.
-    pub fn bind_parameter_count(&'db mut self) -> uint {
+    pub fn bind_parameter_count(&'db mut self) -> ParamIx {
         let count = unsafe { ffi::sqlite3_bind_parameter_count(self.stmt) };
-        count as uint
+        count as ParamIx
     }
 
     /// Expose the underlying `sqlite3_stmt` struct pointer for use
@@ -522,6 +532,9 @@ pub struct ResultRow<'s: 'r, 'r> {
     rows: &'r mut ResultSet<'s>
 }
 
+/// Column index for accessing parts of a row.
+pub type ColIx = u32;
+
 /// Access to one row (step) of a result.
 ///
 /// Note "These routines attempt to convert the value where appropriate."[1]
@@ -539,35 +552,31 @@ impl<'s, 'r> ResultRow<'s, 'r> {
     /// "This routine returns 0 if pStmt is an SQL statement that does
     /// not return data (for example an UPDATE)."*
     #[unstable]
-    pub fn column_count(&self) -> uint {
+    pub fn column_count(&self) -> ColIx {
         let stmt = self.rows.statement.stmt;
         let result = unsafe { ffi::sqlite3_column_count(stmt) };
-        result as uint
+        result as ColIx
     }
 
     /// Look up a column name and compute some function of it.
     ///
-    /// Return `default` if there is no column `i` or its name is not utf-8.
+    /// Return `default` if there is no column `i`
     ///
     /// cf `sqlite_column_name`
-    pub fn with_column_name<T>(&mut self, i: uint, default: T, f: |&str| -> T) -> T {
+    pub fn with_column_name<T, F: Fn(&str) -> T>(&mut self, i: ColIx, default: T, f: F) -> T {
         let stmt = self.rows.statement.stmt;
         let n = i as c_int;
         let result = unsafe { ffi::sqlite3_column_name(stmt, n) };
-        if result == ptr::null() { default }
-        else {
-            let name = unsafe { c_str::CString::new(result, false) };
-            match name.as_str() {
-                Some(name) => f(name),
-                None => default
-            }
+        match result != ptr::null() {
+            true => f(charstar_str(&result)),
+            false => default
         }
     }
 
     /// Look up the type of a column.
     ///
     /// Return `SQLITE_NULL` if there is no such `col`.
-    pub fn column_type(&self, col: uint) -> ColumnType {
+    pub fn column_type(&self, col: ColIx) -> ColumnType {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         let result = unsafe { ffi::sqlite3_column_type(stmt, i_col) };
@@ -576,43 +585,32 @@ impl<'s, 'r> ResultRow<'s, 'r> {
     }
 
     /// Get `int` value of a column.
-    pub fn column_int(&self, col: uint) -> i32 {
+    pub fn column_int(&self, col: ColIx) -> i32 {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         unsafe { ffi::sqlite3_column_int(stmt, i_col) }
     }
 
     /// Get `int64` value of a column.
-    pub fn column_int64(&self, col: uint) -> i64 {
+    pub fn column_int64(&self, col: ColIx) -> i64 {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         unsafe { ffi::sqlite3_column_int64(stmt, i_col) }
     }
 
     /// Get `f64` (aka double) value of a column.
-    pub fn column_double(&self, col: uint) -> f64 {
+    pub fn column_double(&self, col: ColIx) -> f64 {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         unsafe { ffi::sqlite3_column_double(stmt, i_col) }
     }
 
-    /// Try to get `String` (aka text) value of a column.
-    ///
-    /// Fail with `None` in case the result is not well-formed utf-8.
-    pub fn column_text(&mut self, col: uint) -> Option<String> {
+    /// Get `String` (aka text) value of a column.
+    pub fn column_text(&mut self, col: ColIx) -> String {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
-        match unsafe {
-            let s = ffi::sqlite3_column_text(stmt, i_col);
-            if s == ptr::null() { None }
-            else { Some(c_str::CString::new(mem::transmute(s), false)) }
-        } {
-            Some(c_str) => match c_str.as_str() {
-                Some(txt) => Some(txt.to_string()),
-                None => None
-            },
-            None => None
-        }
+        let s = unsafe { ffi::sqlite3_column_text(stmt, i_col) };
+        charstar_str(&(s as *const c_char)).to_string()
     }
 
 
@@ -692,7 +690,9 @@ mod tests {
     }
 
 
-    fn with_query<T>(sql: &str, f: |rows: &mut ResultSet| -> T) -> SqliteResult<T> {
+    fn with_query<T, F>(sql: &str, mut f: F) -> SqliteResult<T>
+        where F: FnMut(&mut ResultSet) -> T
+    {
         let mut db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
@@ -701,18 +701,18 @@ mod tests {
 
     #[test]
     fn query_two_rows() {
-        fn go() -> SqliteResult<(uint, i32)> {
+        fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
-            let mut sum = 0;
+            let mut sum = 0i32;
 
             with_query("select 1
                        union all
-                       select 2", |rows| {
+                       select 2", |&mut: rows| {
                 loop {
                     match rows.step() {
                         Some(Ok(ref mut row)) => {
                             count += 1;
-                            sum += row.get(0u)
+                            sum += row.get(0)
                         },
                         _ => break
                     }
@@ -725,7 +725,7 @@ mod tests {
 
     #[test]
     fn detailed_errors() {
-        let go = || {
+        let go = |&:| {
             let mut db = try!(DatabaseConnection::in_memory());
             db.prepare("select bogus")
         };
@@ -735,7 +735,7 @@ mod tests {
 
     #[test]
     fn no_alloc_errors_db() {
-        let go = || {
+        let go = |&:| {
             let mut db = try!(DatabaseConnection::in_memory());
             db.ignore_detail();
             db.prepare("select bogus")

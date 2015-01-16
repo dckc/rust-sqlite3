@@ -13,7 +13,7 @@ use libc::c_int;
 use std::ptr;
 
 use super::SqliteResult;
-use core::{Access, DatabaseConnection};
+use core::{Access, DatabaseConnection, str_charstar};
 use ffi;
 
 use access::flags::OpenFlags;
@@ -51,9 +51,9 @@ pub struct ByFilename<'a> {
 
 impl<'a> Access for ByFilename<'a> {
     fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
-        self.filename.with_c_str({
-            |filename| unsafe { ffi::sqlite3_open_v2(filename, db, self.flags.bits(), ptr::null()) }
-        })
+        let c_filename = str_charstar(self.filename).as_ptr();
+        let flags = self.flags.bits();
+        unsafe { ffi::sqlite3_open_v2(c_filename, db, flags, ptr::null()) }
     }
 }
 
