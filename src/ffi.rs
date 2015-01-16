@@ -2,7 +2,7 @@
 
 pub type __int128_t = ::libc::c_void;
 pub type __uint128_t = ::libc::c_void;
-pub type __builtin_va_list = [__va_list_tag, ..1u];
+pub type __builtin_va_list = [__va_list_tag; 1];
 pub type __gnuc_va_list = __builtin_va_list;
 pub type va_list = __gnuc_va_list;
 pub enum Struct_sqlite3 { }
