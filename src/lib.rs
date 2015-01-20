@@ -91,6 +91,9 @@
 extern crate libc;
 extern crate time;
 
+#[macro_use]
+extern crate bitflags;
+
 use std::error::{Error};
 use std::fmt::Show;
 
