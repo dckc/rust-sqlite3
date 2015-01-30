@@ -39,7 +39,7 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         match results.step() {
             Some(Ok(ref mut row1)) => {
                 let id = row1.column_int(0);
-                let desc_opt = row1.column_text(1);
+                let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
                 let price = row1.column_int(2);
 
                 assert_eq!(id, 1);

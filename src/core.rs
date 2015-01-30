@@ -47,7 +47,7 @@
 //!         match results.step() {
 //!             Some(Ok(ref mut row1)) => {
 //!                 let id = row1.column_int(0);
-//!                 let desc_opt = row1.column_text(1);
+//!                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
 //!                 let price = row1.column_int(2);
 //! 
 //!                 assert_eq!(id, 1);
@@ -274,10 +274,8 @@ impl DatabaseConnection {
 
     fn _errmsg(db: *mut ffi::sqlite3) -> String {
         let errmsg = unsafe { ffi::sqlite3_errmsg(db) };
-        match errmsg != ptr::null() {
-            true => charstar_str(&(errmsg)),
-            false => "" // returning Option<String> doesn't seem worthwhile.
-        }.to_string()
+        // returning Option<String> doesn't seem worthwhile.
+        charstar_str(&(errmsg)).unwrap_or("").to_string()
     }
 
     /// One-Step Query Execution Interface
@@ -334,8 +332,11 @@ impl DatabaseConnection {
 
 
 /// Convert from sqlite3 API utf8 to rust str.
-fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> &'a str {
-    unsafe { str::from_utf8_unchecked(std_ffi::c_str_to_bytes(utf_bytes)) }
+fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
+    if *utf_bytes == ptr::null() {
+        return None;
+    }
+    Some( unsafe { str::from_utf8_unchecked(std_ffi::c_str_to_bytes(utf_bytes)) } )
 }
 
 /// Convenience function to get a CString from a str
@@ -568,9 +569,9 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         let stmt = self.rows.statement.stmt;
         let n = i as c_int;
         let result = unsafe { ffi::sqlite3_column_name(stmt, n) };
-        match result != ptr::null() {
-            true => f(charstar_str(&result)),
-            false => default
+        match charstar_str(&result) {
+            Some(name) => f(name),
+            None => default
         }
     }
 
@@ -606,12 +607,12 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         unsafe { ffi::sqlite3_column_double(stmt, i_col) }
     }
 
-    /// Get `String` (aka text) value of a column.
-    pub fn column_text(&mut self, col: ColIx) -> String {
+    /// Get `Option<String>` (aka text) value of a column.
+    pub fn column_text(&mut self, col: ColIx) -> Option<String> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         let s = unsafe { ffi::sqlite3_column_text(stmt, i_col) };
-        charstar_str(&(s as *const c_char)).to_string()
+        charstar_str(&(s as *const c_char)).map(|&: f: &str| { f.to_string() })
     }
 
 
@@ -721,6 +722,20 @@ mod tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
+    }
+
+    #[test]
+    fn query_null_string() {
+        let mut db = DatabaseConnection::in_memory().unwrap();
+        let mut stmt = db.prepare("select null").unwrap();
+        with_query("select null", |&mut: rows| {
+            match rows.step() {
+                Some(Ok(ref mut row)) => {
+                    assert_eq!(row.column_text(0), None);
+                }
+                _ => { panic!("Expected a row"); }
+            }
+        });
     }
 
     #[test]

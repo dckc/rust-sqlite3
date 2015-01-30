@@ -88,9 +88,10 @@ impl ToSql for String {
 
 impl FromSql for String {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<String> {
-        Ok(row.column_text(col))
+        Ok(row.column_text(col).unwrap_or(String::new()))
     }
 }
+
 
 /// Format of sqlite date strings
 ///
@@ -101,7 +102,7 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<time::Tm> {
-        let txt = row.column_text(col);
+        let txt = row.column_text(col).unwrap_or(String::new());
         let t = time::strptime(txt.as_slice(), SQLITE_TIME_FMT)
             .unwrap(); // unit tests ensure SQLITE_TIME_FMT is ok
         Ok(t)
