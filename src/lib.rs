@@ -95,7 +95,8 @@ extern crate time;
 extern crate bitflags;
 
 use std::error::{Error};
-use std::fmt::Show;
+use std::fmt::Display;
+use std::fmt;
 
 pub use core::Access;
 pub use core::{DatabaseConnection, PreparedStatement, ResultSet, ResultRow};
@@ -209,27 +210,27 @@ pub trait ResultRowAccess {
     /// # Panic
     ///
     /// Panics if there is no such column or value.
-    fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T;
+    fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T;
 
     /// Try to get `T` type result value from `idx`th column of a row.
-    fn get_opt<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
+    fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
 impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
-    fn get<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> T {
+    fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
-            Err(err) => panic!("retrieving column {:?}: {:?}", idx, err)
+            Err(err) => panic!("retrieving column {}: {}", idx, err)
         }
     }
 
-    fn get_opt<I: RowIndex + Show + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
+    fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
             None => Err(SqliteError {
                 kind: SQLITE_MISUSE,
                 desc: "no such row name/number",
-                detail: Some(format!("{:?}", idx))
+                detail: Some(format!("{}", idx))
             })
         }
     }
@@ -319,9 +320,22 @@ pub struct SqliteError {
     pub detail: Option<String>
 }
 
+impl Display for SqliteError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.detail {
+            Some(ref x) => f.write_fmt(format_args!("{} ({})", x, self.kind as u32)),
+            None => f.write_fmt(format_args!("{} ({})", self.desc, self.kind as u32))
+        }
+    }
+}
+
+impl SqliteError {
+    /// Get a detailed description of the error
+    pub fn detail(&self) -> Option<String> { self.detail.clone() }
+}
+
 impl Error for SqliteError {
     fn description(&self) -> &str { self.desc }
-    fn detail(&self) -> Option<String> { self.detail.clone() }
     fn cause(&self) -> Option<&Error> { None }
 }
 

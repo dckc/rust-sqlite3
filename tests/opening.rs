@@ -45,7 +45,7 @@ pub fn main() {
 
     fn lose(why: &str) {
         std::os::set_exit_status(1);
-        writeln!(&mut std::io::stderr(), "{}", why).unwrap()
+        writeln!(&mut std::old_io::stderr(), "{}", why).unwrap()
     }
 
     match cli_access {

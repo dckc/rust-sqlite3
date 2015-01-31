@@ -677,7 +677,6 @@ mod test_opening {
 
 #[cfg(test)]
 mod tests {
-    use std::error::Error;
     use super::{DatabaseConnection, SqliteResult, ResultSet};
     use super::super::{ResultRowAccess};
 
