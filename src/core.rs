@@ -124,7 +124,7 @@ use ffi; // TODO: move to sqlite3-sys crate
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteOk {
@@ -132,7 +132,7 @@ pub enum SqliteOk {
 }
 
 
-#[derive(Show, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 // TODO: use, test this
 enum SqliteLogLevel {
@@ -487,7 +487,7 @@ pub struct ResultSet<'s> {
     statement: &'s mut PreparedStatement<'s>,
 }
 
-#[derive(Show, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive)]
 #[allow(non_camel_case_types)]
 enum Step {
     SQLITE_ROW       = 100,
@@ -726,8 +726,6 @@ mod tests {
 
     #[test]
     fn query_null_string() {
-        let mut db = DatabaseConnection::in_memory().unwrap();
-        let mut stmt = db.prepare("select null").unwrap();
         with_query("select null", |&mut: rows| {
             match rows.step() {
                 Some(Ok(ref mut row)) => {
@@ -735,7 +733,7 @@ mod tests {
                 }
                 _ => { panic!("Expected a row"); }
             }
-        });
+        }).unwrap();
     }
 
     #[test]

@@ -1,7 +1,9 @@
+#![feature(core, io, env, os)]
+
 extern crate sqlite3;
 
 use std::default::Default;
-use std::os;
+use std::env;
 
 use sqlite3::{
     Access,
@@ -14,9 +16,8 @@ use sqlite3::{
 use sqlite3::access;
 use sqlite3::access::flags::OPEN_READONLY;
 
-#[allow(unstable)]
 pub fn main() {
-    let args = os::args();
+    let args : Vec<String> = env::args().map(|arg| { arg.to_str().unwrap().to_string() }).collect();
     let usage = "args: [-r] filename";
 
     let cli_access = {
@@ -44,7 +45,7 @@ pub fn main() {
 
 
     fn lose(why: &str) {
-        std::os::set_exit_status(1);
+        env::set_exit_status(1);
         writeln!(&mut std::old_io::stderr(), "{}", why).unwrap()
     }
 
@@ -58,7 +59,7 @@ pub fn main() {
 }
 
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Person {
     id: i32,
     name: String,

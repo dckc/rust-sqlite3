@@ -30,7 +30,7 @@
 //!     SqliteResult,
 //! };
 //! 
-//! #[derive(Show)]
+//! #[derive(Debug)]
 //! struct Person {
 //!     id: i32,
 //!     name: String,
@@ -84,10 +84,9 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(unsafe_destructor)]
+#![feature(core, unsafe_destructor, std_misc, libc, hash)]
 #![warn(missing_docs)]
 
-#![allow(unstable)]
 extern crate libc;
 extern crate time;
 
@@ -277,7 +276,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteErrorCode {
@@ -310,7 +309,7 @@ pub enum SqliteErrorCode {
 }
 
 /// Error results
-#[derive(Show, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SqliteError {
     /// kind of error, by code
     pub kind: SqliteErrorCode,
@@ -341,7 +340,7 @@ impl Error for SqliteError {
 
 
 /// Fundamental Datatypes
-#[derive(Show, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum ColumnType {
