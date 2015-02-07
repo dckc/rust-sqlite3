@@ -65,7 +65,7 @@ mod tests {
     use super::ByFilename;
     use core::DatabaseConnection;
     use std::os::tmpdir;
-    use std::path::BytesContainer;
+    use std::old_path::BytesContainer;
 
     #[test]
     fn open_file_db() {
