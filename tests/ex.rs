@@ -12,7 +12,7 @@ use sqlite3::{
     SqliteResult,
 };
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Person {
     id: i32,
     name: String,

@@ -3,10 +3,11 @@
 use super::{PreparedStatement, ResultRow,
             ColIx, ParamIx};
 use super::{
-    SqliteResult,
+    SqliteResult, SqliteErrorCode, SqliteError,
 };
 use super::ColumnType::SQLITE_NULL;
 
+use std::error::FromError;
 
 use time;
 
@@ -103,12 +104,19 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 impl FromSql for time::Tm {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<time::Tm> {
         let txt = row.column_text(col).unwrap_or(String::new());
-        let t = time::strptime(txt.as_slice(), SQLITE_TIME_FMT)
-            .unwrap(); // unit tests ensure SQLITE_TIME_FMT is ok
-        Ok(t)
+        Ok( try!(time::strptime(txt.as_slice(), SQLITE_TIME_FMT)) )
     }
 }
 
+impl FromError<time::ParseError> for SqliteError {
+    fn from_error(err: time::ParseError) -> SqliteError {
+        SqliteError {
+            kind: SqliteErrorCode::SQLITE_MISMATCH,
+            desc: "Time did not match expected format",
+            detail: Some(format!("Time parsing error: {}", err)),
+        }
+    }
+}
 
 impl ToSql for time::Timespec {
     fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
@@ -130,8 +138,17 @@ impl FromSql for time::Timespec {
 #[cfg(test)]
 mod tests {
     use time::Tm;
-    use super::super::{DatabaseConnection, SqliteResult};
+    use super::super::{DatabaseConnection, SqliteResult, ResultSet};
     use super::super::{ResultRowAccess};
+
+    fn with_query<T, F>(sql: &str, mut f: F) -> SqliteResult<T>
+        where F: FnMut(&mut ResultSet) -> T
+    {
+        let mut db = try!(DatabaseConnection::in_memory());
+        let mut s = try!(db.prepare(sql));
+        let mut rows = s.execute();
+        Ok(f(&mut rows))
+    }
 
     #[test]
     fn get_tm() {
@@ -163,6 +180,20 @@ mod tests {
             }
         }
         go().unwrap();
+    }
+
+    #[test]
+    fn get_invalid_tm() {
+        with_query("select 'not a time'", |&mut: results| {
+            match results.step() {
+                Some(Ok(ref mut row)) => {
+                    let x : SqliteResult<Tm> = row.get_opt(0u32);
+                    assert!(x.is_err());
+                },
+                None => panic!("no row"),
+                Some(Err(oops)) =>  panic!("error: {:?}", oops)
+            };
+        }).unwrap();
     }
 }
 
