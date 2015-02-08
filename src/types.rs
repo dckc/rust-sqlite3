@@ -184,7 +184,7 @@ mod tests {
 
     #[test]
     fn get_invalid_tm() {
-        with_query("select 'not a time'", |&mut: results| {
+        with_query("select 'not a time'", |results| {
             match results.step() {
                 Some(Ok(ref mut row)) => {
                     let x : SqliteResult<Tm> = row.get_opt(0u32);

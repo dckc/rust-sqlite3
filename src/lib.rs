@@ -70,7 +70,7 @@
 //! 
 //!     let mut ppl = vec!();
 //!     try!(stmt.query(
-//!         &[], &mut |&mut: row| {
+//!         &[], &mut |row| {
 //!             ppl.push(Person {
 //!                 id: row.get("id"),
 //!                 name: row.get("name"),
@@ -425,7 +425,7 @@ mod bind_tests {
 
             with_query("select 1 as col1
                        union all
-                       select 2", |&mut: rows| {
+                       select 2", |rows| {
                 loop {
                     match rows.step() {
                         Some(Ok(ref mut row)) => {

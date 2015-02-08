@@ -708,7 +708,7 @@ mod tests {
 
             with_query("select 1
                        union all
-                       select 2", |&mut: rows| {
+                       select 2", |rows| {
                 loop {
                     match rows.step() {
                         Some(Ok(ref mut row)) => {
@@ -726,7 +726,7 @@ mod tests {
 
     #[test]
     fn query_null_string() {
-        with_query("select null", |&mut: rows| {
+        with_query("select null", |rows| {
             match rows.step() {
                 Some(Ok(ref mut row)) => {
                     assert_eq!(row.column_text(0), None);
