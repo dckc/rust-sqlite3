@@ -24,10 +24,9 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
             "insert into items (id, description, price)
            values (1, 'stuff', 10)"));
         let mut results = stmt.execute();
-        match results.step() {
+        match try!(results.step()) {
             None => (),
-            Some(Ok(_)) => panic!("row from insert?!"),
-            Some(Err(oops)) => panic!(oops)
+            Some(_) => panic!("row from insert?!"),
         };
     }
     assert_eq!(conn.changes(), 1);
@@ -37,7 +36,7 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
             "select * from items"));
         let mut results = stmt.execute();
         match results.step() {
-            Some(Ok(ref mut row1)) => {
+            Ok(Some(ref mut row1)) => {
                 let id = row1.column_int(0);
                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
                 let price = row1.column_int(2);
@@ -48,8 +47,8 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 
                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
             },
-            Some(Err(oops)) => panic!(oops),
-            None => panic!("where did our row go?")
+            Err(oops) => panic!(oops),
+            Ok(None) => panic!("where did our row go?")
         }
     }
 }

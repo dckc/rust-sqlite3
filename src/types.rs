@@ -158,7 +158,7 @@ mod tests {
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
             let mut results = stmt.execute();
             match results.step() {
-                Some(Ok(ref mut row)) => {
+                Ok(Some(ref mut row)) => {
                     assert_eq!(
                         row.get::<u32, Tm>(0),
                         Tm { tm_sec: 0,
@@ -175,8 +175,8 @@ mod tests {
                         });
                     Ok(())
                 },
-                None => panic!("no row"),
-                Some(Err(oops)) =>  panic!("error: {:?}", oops)
+                Ok(None) => panic!("no row"),
+                Err(oops) =>  panic!("error: {:?}", oops)
             }
         }
         go().unwrap();
@@ -186,12 +186,12 @@ mod tests {
     fn get_invalid_tm() {
         with_query("select 'not a time'", |results| {
             match results.step() {
-                Some(Ok(ref mut row)) => {
+                Ok(Some(ref mut row)) => {
                     let x : SqliteResult<Tm> = row.get_opt(0u32);
                     assert!(x.is_err());
                 },
-                None => panic!("no row"),
-                Some(Err(oops)) =>  panic!("error: {:?}", oops)
+                Ok(None) => panic!("no row"),
+                Err(oops) =>  panic!("error: {:?}", oops)
             };
         }).unwrap();
     }
