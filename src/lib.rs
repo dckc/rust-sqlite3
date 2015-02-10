@@ -70,7 +70,7 @@
 //! 
 //!     let mut ppl = vec!();
 //!     try!(stmt.query(
-//!         &[], &mut |&mut: row| {
+//!         &[], &mut |row| {
 //!             ppl.push(Person {
 //!                 id: row.get("id"),
 //!                 name: row.get("name"),
@@ -142,14 +142,13 @@ impl DatabaseUpdate for core::DatabaseConnection {
         let check = {
             try!(bind_values(stmt, values));
             let mut results = stmt.execute();
-            match results.step() {
+            match try!(results.step()) {
                 None => Ok(()),
-                Some(Ok(_row)) => Err(SqliteError {
+                Some(_row) => Err(SqliteError {
                     kind: SQLITE_MISUSE,
                     desc: "unexpected SQLITE_ROW from update",
                     detail: None
-                }),
-                Some(Err(e)) => Err(e)
+                })
             }
         };
         check.map(|_ok| self.changes())
@@ -183,10 +182,9 @@ impl<'s, F> Query<'s, F> for core::PreparedStatement<'s>
         try!(bind_values(self, values));
         let mut results = self.execute();
         loop {
-            match results.step() {
+            match try!(results.step()) {
                 None => break,
-                Some(Ok(ref mut row)) => try!(each_row(row)),
-                Some(Err(e)) => return Err(e)
+                Some(ref mut row) => try!(each_row(row)),
             }
         }
         Ok(())
@@ -377,14 +375,14 @@ mod bind_tests {
                 try!(tx.bind_text(2, "Jane Doe"));
                 try!(tx.bind_text(3, "345 e Walnut"));
                 let mut results = tx.execute();
-                assert!(results.step().is_none());
+                assert!(results.step().ok().unwrap().is_none());
             }
             assert_eq!(database.changes(), 1);
 
             let mut q = try!(database.prepare("select * from test order by id"));
             let mut rows = q.execute();
             match rows.step() {
-                Some(Ok(ref mut row)) => {
+                Ok(Some(ref mut row)) => {
                     assert_eq!(row.get::<u32, i32>(0), 1);
                     // TODO let name = q.get_text(1);
                     // assert_eq!(name.as_slice(), "John Doe");
@@ -393,7 +391,7 @@ mod bind_tests {
             }
 
             match rows.step() {
-                Some(Ok(ref mut row)) => {
+                Ok(Some(ref mut row)) => {
                     assert_eq!(row.get::<u32, i32>(0), 2);
                     //TODO let addr = q.get_text(2);
                     // assert_eq!(addr.as_slice(), "345 e Walnut");
@@ -425,10 +423,10 @@ mod bind_tests {
 
             with_query("select 1 as col1
                        union all
-                       select 2", |&mut: rows| {
+                       select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Some(Ok(ref mut row)) => {
+                        Ok(Some(ref mut row)) => {
                             count += 1;
                             sum += row.get("col1")
                         },

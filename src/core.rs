@@ -32,10 +32,9 @@
 //!             "insert into items (id, description, price)
 //!            values (1, 'stuff', 10)"));
 //!         let mut results = stmt.execute();
-//!         match results.step() {
+//!         match try!(results.step()) {
 //!             None => (),
-//!             Some(Ok(_)) => panic!("row from insert?!"),
-//!             Some(Err(oops)) => panic!(oops)
+//!             Some(_) => panic!("row from insert?!")
 //!         };
 //!     }
 //!     assert_eq!(conn.changes(), 1);
@@ -45,7 +44,7 @@
 //!             "select * from items"));
 //!         let mut results = stmt.execute();
 //!         match results.step() {
-//!             Some(Ok(ref mut row1)) => {
+//!             Ok(Some(ref mut row1)) => {
 //!                 let id = row1.column_int(0);
 //!                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
 //!                 let price = row1.column_int(2);
@@ -56,8 +55,8 @@
 //! 
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
-//!             Some(Err(oops)) => panic!(oops),
-//!             None => panic!("where did our row go?")
+//!             Err(oops) => panic!(oops),
+//!             Ok(None) => panic!("where did our row go?")
 //!         }
 //!     }
 //! }
@@ -516,14 +515,14 @@ impl<'s> ResultSet<'s> {
     /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
     /// so we need a lifetime constraint. The unfortunate result is that
     ///  `ResultSet` cannot implement the `Iterator` trait.
-    pub fn step<'r>(&'r mut self) -> Option<SqliteResult<ResultRow<'s, 'r>>> {
+    pub fn step<'r>(&'r mut self) -> SqliteResult<Option<ResultRow<'s, 'r>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match from_i32::<Step>(result) {
             Some(SQLITE_ROW) => {
-                Some(Ok(ResultRow{ rows: self }))
+                Ok(Some(ResultRow{ rows: self }))
             },
-            Some(SQLITE_DONE) => None,
-            None => Some(Err(error_result(result, "step", self.statement.get_detail())))
+            Some(SQLITE_DONE) => Ok(None),
+            None => Err(error_result(result, "step", self.statement.get_detail()))
         }
     }
 }
@@ -708,10 +707,10 @@ mod tests {
 
             with_query("select 1
                        union all
-                       select 2", |&mut: rows| {
+                       select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Some(Ok(ref mut row)) => {
+                        Ok(Some(ref mut row)) => {
                             count += 1;
                             sum += row.get(0)
                         },
@@ -726,9 +725,9 @@ mod tests {
 
     #[test]
     fn query_null_string() {
-        with_query("select null", |&mut: rows| {
+        with_query("select null", |rows| {
             match rows.step() {
-                Some(Ok(ref mut row)) => {
+                Ok(Some(ref mut row)) => {
                     assert_eq!(row.column_text(0), None);
                 }
                 _ => { panic!("Expected a row"); }
