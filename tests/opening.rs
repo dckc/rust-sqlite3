@@ -17,7 +17,7 @@ use sqlite3::access;
 use sqlite3::access::flags::OPEN_READONLY;
 
 pub fn main() {
-    let args : Vec<String> = env::args().map(|arg| { arg.to_str().unwrap().to_string() }).collect();
+    let args : Vec<String> = env::args().collect();
     let usage = "args: [-r] filename";
 
     let cli_access = {
