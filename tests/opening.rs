@@ -1,4 +1,4 @@
-#![feature(core, io, env, os)]
+#![feature(core, io, env)]
 
 extern crate sqlite3;
 
