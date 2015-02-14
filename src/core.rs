@@ -614,6 +614,17 @@ impl<'s, 'r> ResultRow<'s, 'r> {
         charstar_str(&(s as *const c_char)).map(|&: f: &str| { f.to_string() })
     }
 
+    /// Get `Option<Vec<u8>>` (aka blob) value of a column.
+    pub fn column_blob(&mut self, col: ColIx) -> Option<Vec<u8>> {
+        let stmt = self.rows.statement.stmt;
+        let i_col = col as c_int;
+        let bs = unsafe { ffi::sqlite3_column_blob(stmt, i_col) } as *const ::libc::c_uchar;
+        if bs == ptr::null() {
+            return None;
+        }
+        let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) };
+        Some(unsafe { Vec::from_raw_buf(bs, len as usize)} )
+    }
 
 }
 

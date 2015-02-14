@@ -93,6 +93,12 @@ impl FromSql for String {
     }
 }
 
+impl FromSql for Vec<u8> {
+    fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<Vec<u8>> {
+        Ok(row.column_blob(col).unwrap_or(Vec::new()))
+    }
+}
+
 
 /// Format of sqlite date strings
 ///
@@ -189,6 +195,20 @@ mod tests {
                 Ok(Some(ref mut row)) => {
                     let x : SqliteResult<Tm> = row.get_opt(0u32);
                     assert!(x.is_err());
+                },
+                Ok(None) => panic!("no row"),
+                Err(oops) =>  panic!("error: {:?}", oops)
+            };
+        }).unwrap();
+    }
+
+    #[test]
+    fn select_blob() {
+        with_query("select x'ff0db0'", |results| {
+            match results.step() {
+                Ok(Some(ref mut row)) => {
+                    let x : SqliteResult<Vec<u8>> = row.get_opt(0u32);
+                    assert_eq!(x.ok().unwrap(), [0xff, 0x0d, 0xb0].to_vec());
                 },
                 Ok(None) => panic!("no row"),
                 Err(oops) =>  panic!("error: {:?}", oops)

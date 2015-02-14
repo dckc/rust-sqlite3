@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(core, unsafe_destructor, std_misc, libc, hash)]
+#![feature(core, collections, unsafe_destructor, std_misc, libc, hash)]
 #![warn(missing_docs)]
 
 extern crate libc;
