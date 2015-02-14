@@ -35,7 +35,7 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         let mut stmt = try!(conn.prepare(
             "select * from items"));
         let mut results = stmt.execute();
-        match results.step() {
+        let res = match results.step() {
             Ok(Some(ref mut row1)) => {
                 let id = row1.column_int(0);
                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
@@ -49,7 +49,8 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
             },
             Err(oops) => panic!(oops),
             Ok(None) => panic!("where did our row go?")
-        }
+        };
+        res
     }
 }
 

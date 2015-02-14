@@ -1,9 +1,10 @@
-#![feature(core, io, env)]
+#![feature(core, exit_status)]
 
 extern crate sqlite3;
 
 use std::default::Default;
 use std::env;
+use std::io::Write;
 
 use sqlite3::{
     Access,
@@ -21,9 +22,9 @@ pub fn main() {
     let usage = "args: [-r] filename";
 
     let cli_access = {
-        let ok = |&: flags, dbfile| Some(access::ByFilename { flags: flags, filename: dbfile });
+        let ok = |flags, dbfile| Some(access::ByFilename { flags: flags, filename: dbfile });
 
-        let arg = |&: n| {
+        let arg = |n| {
             if args.len() > n { Some(args[n].as_slice()) }
             else { None }
         };
@@ -46,7 +47,9 @@ pub fn main() {
 
     fn lose(why: &str) {
         env::set_exit_status(1);
-        writeln!(&mut std::old_io::stderr(), "{}", why).unwrap()
+        let stderr = std::io::stderr();
+        let mut stderr_lock = stderr.lock();
+        stderr_lock.write_fmt(format_args!("{}", why)).unwrap()
     }
 
     match cli_access {
