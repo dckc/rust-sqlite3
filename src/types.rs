@@ -62,6 +62,16 @@ impl FromSql for f64 {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<f64> { Ok(row.column_double(col)) }
 }
 
+impl ToSql for bool {
+    fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
+        s.bind_int(ix, if *self { 1 } else { 0 })
+    }
+}
+
+impl FromSql for bool {
+    fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<bool> { Ok(row.column_int(col)!=0) }
+}
+
 impl<T: ToSql + Clone> ToSql for Option<T> {
     fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
         match (*self).clone() {
