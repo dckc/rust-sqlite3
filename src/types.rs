@@ -93,6 +93,12 @@ impl FromSql for String {
     }
 }
 
+impl<'a> ToSql for &'a [u8] {
+    fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
+        s.bind_blob(ix, *self)
+    }
+}
+
 impl FromSql for Vec<u8> {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<Vec<u8>> {
         Ok(row.column_blob(col).unwrap_or(Vec::new()))
