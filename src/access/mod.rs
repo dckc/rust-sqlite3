@@ -65,16 +65,15 @@ mod tests {
     use super::ByFilename;
     use core::DatabaseConnection;
     use std::env::temp_dir;
-    use std::old_path::BytesContainer;
 
     #[test]
     fn open_file_db() {
         let mut temp_directory = temp_dir();
         temp_directory.push("db1");
-        let path = temp_directory.container_as_str().unwrap();
+        let path = temp_directory.into_os_string().into_string().unwrap();
         DatabaseConnection::new(
             ByFilename {
-                filename: path, flags: Default::default()
+                filename: path.as_slice(), flags: Default::default()
             })
             .unwrap();
     }

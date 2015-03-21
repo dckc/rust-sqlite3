@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(core, collections, unsafe_destructor, std_misc, libc, hash)]
+#![feature(core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
 
 
@@ -120,8 +120,8 @@ pub mod access;
 /// Mix in `update()` convenience function.
 pub trait DatabaseUpdate {
     /// Execute a statement after binding any parameters.
-    fn update<'db, 's>(&'db mut self,
-                       stmt: &'s mut PreparedStatement<'s>,
+    fn update<'db:'s, 's>(&'db self,
+                       stmt: &'s mut PreparedStatement<'db>,
                        values: &[&ToSql]) -> SqliteResult<u64>;
 }
 
@@ -137,8 +137,8 @@ impl DatabaseUpdate for core::DatabaseConnection {
     /// `UPDATE`).
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    fn update<'db, 's>(&'db mut self,
-                       stmt: &'s mut PreparedStatement<'s>,
+    fn update<'db:'s, 's>(&'db self,
+                       stmt: &'s mut PreparedStatement<'db>,
                        values: &[&ToSql]) -> SqliteResult<u64> {
         let check = {
             try!(bind_values(stmt, values));
@@ -168,7 +168,7 @@ pub trait Query<'s, F>
              ) -> SqliteResult<()>;
 }
 
-impl<'s, F> Query<'s, F> for core::PreparedStatement<'s>
+impl<'db:'s, 's, F> Query<'s, F> for core::PreparedStatement<'db>
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
@@ -214,7 +214,7 @@ pub trait ResultRowAccess {
     fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
-impl<'s, 'r> ResultRowAccess for core::ResultRow<'s, 'r> {
+impl<'stmt, 'res, 'row> ResultRowAccess for core::ResultRow<'stmt, 'res, 'row> {
     fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
@@ -410,7 +410,7 @@ mod bind_tests {
     fn with_query<T, F>(sql: &str, mut f: F) -> SqliteResult<T>
         where F: FnMut(&mut ResultSet) -> T
     {
-        let mut db = try!(DatabaseConnection::in_memory());
+        let db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))
@@ -442,12 +442,12 @@ mod bind_tests {
 
     #[test]
     fn err_with_detail() {
-        let io = |&:| {
+        let io = || {
             let mut conn = try!(DatabaseConnection::in_memory());
             conn.exec("CREATE gobbledygook")
         };
 
-        let go = |&:| match io() {
+        let go = || match io() {
             Ok(_) => panic!(),
             Err(oops) => {
                 format!("{:?}: {}: {}",

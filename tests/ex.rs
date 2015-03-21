@@ -46,7 +46,7 @@ fn io() -> SqliteResult<Vec<Person>> {
                            VALUES ($1, $2)"));
         let changes = try!(conn.update(&mut tx, &[&me.name, &me.time_created]));
         assert_eq!(changes, 1);
-    }
+    };
 
     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
 

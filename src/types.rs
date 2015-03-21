@@ -150,7 +150,7 @@ mod tests {
     fn with_query<T, F>(sql: &str, mut f: F) -> SqliteResult<T>
         where F: FnMut(&mut ResultSet) -> T
     {
-        let mut db = try!(DatabaseConnection::in_memory());
+        let db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
         Ok(f(&mut rows))
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn get_tm() {
         fn go() -> SqliteResult<()> {
-            let mut conn = try!(DatabaseConnection::in_memory());
+            let conn = try!(DatabaseConnection::in_memory());
             let mut stmt = try!(
                 conn.prepare("select datetime('2001-01-01', 'weekday 3', '3 hours')"));
             let mut results = stmt.execute();
