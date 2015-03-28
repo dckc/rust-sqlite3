@@ -1,4 +1,4 @@
-#![feature(core, exit_status)]
+#![feature(convert, exit_status)]
 
 extern crate sqlite3;
 
@@ -25,7 +25,7 @@ pub fn main() {
         let ok = |flags, dbfile| Some(access::ByFilename { flags: flags, filename: dbfile });
 
         let arg = |n| {
-            if args.len() > n { Some(args[n].as_slice()) }
+            if args.len() > n { Some(args[n].as_ref()) }
             else { None }
         };
 
@@ -55,7 +55,7 @@ pub fn main() {
     match cli_access {
         Some(a) => match use_access(a) {
             Ok(x) => println!("Ok: {:?}", x),
-            Err(oops) => lose(format!("oops!: {:?}", oops).as_slice())
+            Err(oops) => lose(format!("oops!: {:?}", oops).as_ref())
         },
         None => lose(usage)
     }
