@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(core, collections, unsafe_destructor, std_misc, libc)]
+#![feature(convert, core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
 
 
@@ -255,7 +255,7 @@ impl RowIndex for &'static str {
     /// *TODO: figure out how to use lifetime of row rather than
     /// `static`.*
     fn idx(&self, row: &mut ResultRow) -> Option<ColIx> {
-        let mut ixs = range(0, row.column_count());
+        let mut ixs = 0 .. row.column_count();
         ixs.find(|ix| row.with_column_name(*ix, false, |name| name == *self))
     }
 }
@@ -457,6 +457,6 @@ mod bind_tests {
         };
 
         let expected = "SQLITE_ERROR: sqlite3_exec: near \"gobbledygook\": syntax error";
-        assert_eq!(go().as_slice(), expected)
+        assert_eq!(go(), expected.to_string())
     }
 }

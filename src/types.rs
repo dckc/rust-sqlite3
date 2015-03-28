@@ -82,7 +82,7 @@ impl<T: FromSql + Clone> FromSql for Option<T> {
 
 impl ToSql for String {
     fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
-        s.bind_text(ix, (*self).as_slice())
+        s.bind_text(ix, (*self).as_ref())
     }
 }
 
@@ -110,7 +110,7 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 impl FromSql for time::Tm {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<time::Tm> {
         let txt = row.column_text(col).unwrap_or(String::new());
-        Ok( try!(time::strptime(txt.as_slice(), SQLITE_TIME_FMT)) )
+        Ok( try!(time::strptime(txt.as_ref(), SQLITE_TIME_FMT)) )
     }
 }
 
@@ -129,7 +129,7 @@ impl ToSql for time::Timespec {
         let timestr = time::at_utc(*self).strftime(SQLITE_TIME_FMT)
             .unwrap() // unit tests ensure SQLITE_TIME_FMT is ok
             .to_string();
-        s.bind_text(ix, timestr.as_slice())
+        s.bind_text(ix, timestr.as_ref())
     }
 }
 

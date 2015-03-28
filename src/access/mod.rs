@@ -73,7 +73,7 @@ mod tests {
         let path = temp_directory.into_os_string().into_string().unwrap();
         DatabaseConnection::new(
             ByFilename {
-                filename: path.as_slice(), flags: Default::default()
+                filename: path.as_ref(), flags: Default::default()
             })
             .unwrap();
     }
