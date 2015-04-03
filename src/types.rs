@@ -7,8 +7,6 @@ use super::{
 };
 use super::ColumnType::SQLITE_NULL;
 
-use std::error::FromError;
-
 use time;
 
 /// Values that can be bound to parameters in prepared statements.
@@ -130,8 +128,8 @@ impl FromSql for time::Tm {
     }
 }
 
-impl FromError<time::ParseError> for SqliteError {
-    fn from_error(err: time::ParseError) -> SqliteError {
+impl From<time::ParseError> for SqliteError {
+    fn from(err: time::ParseError) -> SqliteError {
         SqliteError {
             kind: SqliteErrorCode::SQLITE_MISMATCH,
             desc: "Time did not match expected format",

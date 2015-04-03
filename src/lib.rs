@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(convert, core, collections, unsafe_destructor, std_misc, libc)]
+#![feature(core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
 
 
@@ -275,7 +275,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteErrorCode {
@@ -339,7 +339,7 @@ impl Error for SqliteError {
 
 
 /// Fundamental Datatypes
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum ColumnType {
