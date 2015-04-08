@@ -413,7 +413,8 @@ mod bind_tests {
         let db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
-        Ok(f(&mut rows))
+        let x = f(&mut rows);
+        return Ok(x);
     }
 
     #[test]
@@ -429,7 +430,7 @@ mod bind_tests {
                     match rows.step() {
                         Ok(Some(ref mut row)) => {
                             count += 1;
-                            sum += row.get("col1")
+                            sum += row.column_int(0);
                         },
                         _ => break
                     }

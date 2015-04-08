@@ -1,4 +1,4 @@
-#![feature(convert, exit_status)]
+#![feature(exit_status)]
 
 extern crate sqlite3;
 

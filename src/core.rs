@@ -708,7 +708,6 @@ mod test_opening {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
-    use super::super::{ResultRowAccess};
 
     #[test]
     fn stmt_new_types() {
@@ -743,7 +742,7 @@ mod tests {
                     match rows.step() {
                         Ok(Some(ref mut row)) => {
                             count += 1;
-                            sum += row.get(0)
+                            sum += row.column_int(0);
                         },
                         _ => break
                     }
