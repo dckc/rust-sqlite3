@@ -125,7 +125,7 @@ use ffi; // TODO: move to sqlite3-sys crate
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteOk {
@@ -133,7 +133,7 @@ pub enum SqliteOk {
 }
 
 
-#[derive(Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 // TODO: use, test this
 enum SqliteLogLevel {
@@ -187,10 +187,10 @@ fn maybe<T>(choice: bool, x: T) -> Option<T> {
     if choice { Some(x) } else { None }
 }
 
-use std::error::FromError;
+use std::convert::From;
 use std::ffi::NulError;
-impl FromError<NulError> for SqliteError {
-    fn from_error(_: NulError) -> SqliteError {
+impl From<NulError> for SqliteError {
+    fn from(_: NulError) -> SqliteError {
         SqliteError{
             kind: SqliteErrorCode::SQLITE_MISUSE,
             desc: "Sql string contained an internal 0 byte",
