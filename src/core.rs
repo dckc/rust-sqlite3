@@ -7,25 +7,25 @@
 //!
 //! ```rust
 //! extern crate sqlite3;
-//! 
+//!
 //! use sqlite3::{
 //!     DatabaseConnection,
 //!     SqliteResult,
 //! };
-//! 
+//!
 //! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//! 
+//!
 //!     try!(conn.exec("
 //!        create table items (
 //!                    id integer,
 //!                    description varchar(40),
 //!                    price integer
 //!                    )"));
-//! 
+//!
 //!     Ok(conn)
 //! }
-//! 
+//!
 //! fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 //!     {
 //!         let mut stmt = try!(conn.prepare(
@@ -48,11 +48,11 @@
 //!                 let id = row1.column_int(0);
 //!                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
 //!                 let price = row1.column_int(2);
-//! 
+//!
 //!                 assert_eq!(id, 1);
 //!                 assert_eq!(desc_opt, format!("stuff"));
 //!                 assert_eq!(price, 10);
-//! 
+//!
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
 //!             Err(oops) => panic!(oops),
@@ -60,7 +60,7 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! pub fn main() {
 //!     match convenience_exec() {
 //!         Ok(ref mut db) => {
@@ -349,7 +349,7 @@ fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
         return None;
     }
     let c_str = unsafe { CStr::from_ptr(*utf_bytes) };
-    
+
     Some( unsafe { str::from_utf8_unchecked(c_str.to_bytes()) } )
 }
 
@@ -731,11 +731,11 @@ mod tests {
         Ok(f(&mut rows))
     }
 
-    #[test]
+    /*#[test]
     fn query_two_rows() {
         fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
-            let mut sum = 0i32;
+            let mut sum:i32 = 0;
 
             with_query("select 1
                        union all
@@ -753,7 +753,7 @@ mod tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
-    }
+    }*/
 
     #[test]
     fn query_null_string() {
