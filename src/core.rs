@@ -7,25 +7,25 @@
 //!
 //! ```rust
 //! extern crate sqlite3;
-//! 
+//!
 //! use sqlite3::{
 //!     DatabaseConnection,
 //!     SqliteResult,
 //! };
-//! 
+//!
 //! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//! 
+//!
 //!     try!(conn.exec("
 //!        create table items (
 //!                    id integer,
 //!                    description varchar(40),
 //!                    price integer
 //!                    )"));
-//! 
+//!
 //!     Ok(conn)
 //! }
-//! 
+//!
 //! fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 //!     {
 //!         let mut stmt = try!(conn.prepare(
@@ -48,11 +48,11 @@
 //!                 let id = row1.column_int(0);
 //!                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
 //!                 let price = row1.column_int(2);
-//! 
+//!
 //!                 assert_eq!(id, 1);
 //!                 assert_eq!(desc_opt, format!("stuff"));
 //!                 assert_eq!(price, 10);
-//! 
+//!
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
 //!             Err(oops) => panic!(oops),
@@ -60,7 +60,7 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! pub fn main() {
 //!     match convenience_exec() {
 //!         Ok(ref mut db) => {
@@ -125,7 +125,7 @@ use ffi; // TODO: move to sqlite3-sys crate
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteOk {
@@ -133,7 +133,7 @@ pub enum SqliteOk {
 }
 
 
-#[derive(Debug, PartialEq, Eq, FromPrimitive)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 // TODO: use, test this
 enum SqliteLogLevel {
@@ -187,10 +187,10 @@ fn maybe<T>(choice: bool, x: T) -> Option<T> {
     if choice { Some(x) } else { None }
 }
 
-use std::error::FromError;
+use std::convert::From;
 use std::ffi::NulError;
-impl FromError<NulError> for SqliteError {
-    fn from_error(_: NulError) -> SqliteError {
+impl From<NulError> for SqliteError {
+    fn from(_: NulError) -> SqliteError {
         SqliteError{
             kind: SqliteErrorCode::SQLITE_MISUSE,
             desc: "Sql string contained an internal 0 byte",
@@ -349,7 +349,7 @@ fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
         return None;
     }
     let c_str = unsafe { CStr::from_ptr(*utf_bytes) };
-    
+
     Some( unsafe { str::from_utf8_unchecked(c_str.to_bytes()) } )
 }
 
@@ -735,16 +735,17 @@ mod tests {
     fn query_two_rows() {
         fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
-            let mut sum = 0i32;
+            let mut sum:i32 = 0;
 
             with_query("select 1
                        union all
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Ok(Some(ref mut row)) => {
+                        Ok(Some(mut row)) => {
                             count += 1;
-                            sum += row.get(0)
+                            let result :i32 = row.get(0);
+                            sum += result;
                         },
                         _ => break
                     }

@@ -18,10 +18,10 @@
 //! ```rust
 //! extern crate time;
 //! extern crate sqlite3;
-//! 
+//!
 //! use time::Timespec;
-//! 
-//! 
+//!
+//!
 //! use sqlite3::{
 //!     DatabaseConnection,
 //!     DatabaseUpdate,
@@ -29,7 +29,7 @@
 //!     ResultRowAccess,
 //!     SqliteResult,
 //! };
-//! 
+//!
 //! #[derive(Debug)]
 //! struct Person {
 //!     id: i32,
@@ -37,23 +37,23 @@
 //!     time_created: Timespec,
 //!     // TODO: data: Option<Vec<u8>>
 //! }
-//! 
+//!
 //! pub fn main() {
 //!     match io() {
 //!         Ok(ppl) => println!("Found people: {:?}", ppl),
 //!         Err(oops) => panic!(oops)
 //!     }
 //! }
-//! 
+//!
 //! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//! 
+//!
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
 //!                  time_created    TIMESTAMP NOT NULL
 //!                )"));
-//! 
+//!
 //!     let me = Person {
 //!         id: 0,
 //!         name: format!("Dan"),
@@ -65,9 +65,9 @@
 //!         let changes = try!(conn.update(&mut tx, &[&me.name, &me.time_created]));
 //!         assert_eq!(changes, 1);
 //!     }
-//! 
+//!
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
-//! 
+//!
 //!     let mut ppl = vec!();
 //!     try!(stmt.query(
 //!         &[], &mut |row| {
@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(convert, core, collections, unsafe_destructor, std_misc, libc)]
+#![feature(core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
 
 
@@ -275,7 +275,7 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum SqliteErrorCode {
@@ -308,7 +308,7 @@ pub enum SqliteErrorCode {
 }
 
 /// Error results
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct SqliteError {
     /// kind of error, by code
     pub kind: SqliteErrorCode,
@@ -339,7 +339,7 @@ impl Error for SqliteError {
 
 
 /// Fundamental Datatypes
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
+#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
 #[allow(non_camel_case_types)]
 #[allow(missing_docs)]
 pub enum ColumnType {
@@ -420,16 +420,17 @@ mod bind_tests {
     fn named_rowindex() {
         fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
-            let mut sum = 0i32;
+            let mut sum: i32 = 0;
 
             with_query("select 1 as col1
                        union all
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Ok(Some(ref mut row)) => {
+                        Ok(Some(mut row)) => {
                             count += 1;
-                            sum += row.get("col1")
+                            let result: i32 = row.get("col1");
+                            sum += result;
                         },
                         _ => break
                     }
