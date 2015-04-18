@@ -731,7 +731,7 @@ mod tests {
         Ok(f(&mut rows))
     }
 
-    /*#[test]
+    #[test]
     fn query_two_rows() {
         fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
@@ -742,9 +742,10 @@ mod tests {
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Ok(Some(ref mut row)) => {
+                        Ok(Some(mut row)) => {
                             count += 1;
-                            sum += row.get(0)
+                            let result :i32 = row.get(0);
+                            sum += result;
                         },
                         _ => break
                     }
@@ -753,7 +754,7 @@ mod tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
-    }*/
+    }
 
     #[test]
     fn query_null_string() {

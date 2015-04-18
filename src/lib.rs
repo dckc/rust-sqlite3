@@ -84,7 +84,7 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(convert, core, collections, unsafe_destructor, std_misc, libc)]
+#![feature(core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
 
 
@@ -416,7 +416,7 @@ mod bind_tests {
         Ok(f(&mut rows))
     }
 
-    /*#[test]
+    #[test]
     fn named_rowindex() {
         fn go() -> SqliteResult<(u32, i32)> {
             let mut count = 0;
@@ -427,9 +427,10 @@ mod bind_tests {
                        select 2", |rows| {
                 loop {
                     match rows.step() {
-                        Ok(Some(ref mut row)) => {
+                        Ok(Some(mut row)) => {
                             count += 1;
-                            sum += row.get("col1")
+                            let result: i32 = row.get("col1");
+                            sum += result;
                         },
                         _ => break
                     }
@@ -438,7 +439,7 @@ mod bind_tests {
             })
         }
         assert_eq!(go(), Ok((2, 3)))
-    }*/
+    }
 
     #[test]
     fn err_with_detail() {
