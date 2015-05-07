@@ -1,5 +1,3 @@
-#![feature(exit_status)]
-
 extern crate sqlite3;
 
 use std::default::Default;
@@ -46,7 +44,7 @@ pub fn main() {
 
 
     fn lose(why: &str) {
-        env::set_exit_status(1);
+        // FIXME: Set the exit status once that is stabilized
         let stderr = std::io::stderr();
         let mut stderr_lock = stderr.lock();
         stderr_lock.write_fmt(format_args!("{}", why)).unwrap()

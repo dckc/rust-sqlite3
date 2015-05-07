@@ -685,7 +685,7 @@ fn error_result(
 #[cfg(test)]
 mod test_opening {
     use super::{DatabaseConnection, SqliteResult};
-    use std::time::Duration;
+    use time::Duration;
 
     #[test]
     fn db_construct_typechecks() {
