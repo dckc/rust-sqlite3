@@ -96,15 +96,15 @@
 //!   - `ResultRow` is a lifetime for access to the columns of one row.
 //!
 
+use enum_primitive::FromPrimitive;
 use libc::{c_int, c_char};
 use std::ffi as std_ffi;
 use std::mem;
-use std::num::from_i32;
 use std::ptr;
 use std::str;
-use std::time::Duration;
 use std::marker::PhantomData;
 use std::ffi::CStr;
+use time::Duration;
 
 use self::SqliteOk::SQLITE_OK;
 use self::Step::{SQLITE_ROW, SQLITE_DONE};
@@ -125,20 +125,23 @@ use ffi; // TODO: move to sqlite3-sys crate
 ///
 /// Use `SQLITE_OK as c_int` to decode return values from mod ffi.
 /// See SqliteResult, SqliteError for typical return code handling.
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
-#[allow(non_camel_case_types)]
-#[allow(missing_docs)]
-pub enum SqliteOk {
-    SQLITE_OK = 0
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+    #[allow(non_camel_case_types)]
+    #[allow(missing_docs)]
+    pub enum SqliteOk {
+        SQLITE_OK = 0
+    }
 }
 
-
-#[derive(Debug, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-// TODO: use, test this
-enum SqliteLogLevel {
-    SQLITE_NOTICE    = 27,
-    SQLITE_WARNING   = 28,
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq)]
+    #[allow(non_camel_case_types)]
+    // TODO: use, test this
+    enum SqliteLogLevel {
+        SQLITE_NOTICE    = 27,
+        SQLITE_WARNING   = 28,
+    }
 }
 
 /// A connection to a sqlite3 database.
@@ -228,7 +231,6 @@ impl DatabaseConnection {
     /// Create connection to an in-memory database.
     ///
     ///  - TODO: integrate sqlite3_errmsg()
-    #[unstable]
     pub fn in_memory() -> SqliteResult<DatabaseConnection> {
         struct InMemory;
         impl Access for InMemory {
@@ -252,7 +254,6 @@ impl DatabaseConnection {
     ///
     /// *TODO: give caller a safe way to use the offset. Perhaps
     /// return a &'x str?*
-    #[unstable]
     pub fn prepare_with_offset<'db:'st, 'st>(&'db self, sql: &str)
                                     -> SqliteResult<(PreparedStatement<'st>, usize)> {
         let mut stmt = ptr::null_mut();
@@ -278,7 +279,6 @@ impl DatabaseConnection {
     /// value from sqlite3_errcode() is undefined."*
     ///
     /// cf `ffi::sqlite3_errmsg`.
-    #[unstable]
     pub fn errmsg(&mut self) -> String {
         DatabaseConnection::_errmsg(self.db)
     }
@@ -296,7 +296,6 @@ impl DatabaseConnection {
     ///
     ///  - TODO: callback support?
     ///  - TODO: errmsg support
-    #[unstable]
     pub fn exec(&mut self, sql: &str) -> SqliteResult<()> {
         let db = self.db;
         let c_sql = try!(std_ffi::CString::new(sql.as_bytes()));
@@ -365,7 +364,6 @@ pub struct PreparedStatement<'st> {
     marker: PhantomData<&'st DatabaseConnection>,
 }
 
-#[unsafe_destructor]
 impl<'st> Drop for PreparedStatement<'st> {
     fn drop(&mut self) {
         unsafe {
@@ -452,7 +450,6 @@ impl<'st> PreparedStatement<'st> {
     /// Bind a (copy of a) str to a statement parameter.
     ///
     /// *TODO: support binding without copying strings, blobs*
-    #[unstable]
     pub fn bind_text(&mut self, i: ParamIx, value: &str) -> SqliteResult<()> {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
@@ -466,7 +463,6 @@ impl<'st> PreparedStatement<'st> {
     /// Bind a (copy of a) byte sequence to a statement parameter.
     ///
     /// *TODO: support binding without copying strings, blobs*
-    #[unstable]
     pub fn bind_blob(&mut self, i: ParamIx, value: &[u8]) -> SqliteResult<()> {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
@@ -504,15 +500,15 @@ pub struct ResultSet<'st:'res, 'res> {
     statement: &'res mut PreparedStatement<'st>,
 }
 
-#[derive(Debug, PartialEq, Eq, FromPrimitive)]
-#[allow(non_camel_case_types)]
-enum Step {
-    SQLITE_ROW       = 100,
-    SQLITE_DONE      = 101,
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq)]
+    #[allow(non_camel_case_types)]
+    enum Step {
+        SQLITE_ROW       = 100,
+        SQLITE_DONE      = 101,
+    }
 }
 
-
-#[unsafe_destructor]
 impl<'st, 'res> Drop for ResultSet<'st, 'res> {
     fn drop(&mut self) {
 
@@ -535,7 +531,7 @@ impl<'st:'res, 'res:'row, 'row> ResultSet<'st, 'res> {
     ///  `ResultSet` cannot implement the `Iterator` trait.
     pub fn step(&'row mut self) -> SqliteResult<Option<ResultRow<'st, 'res, 'row>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
-        match from_i32::<Step>(result) {
+        match Step::from_i32(result) {
             Some(SQLITE_ROW) => {
                 Ok(Some(ResultRow{ rows: self }))
             },
@@ -570,7 +566,6 @@ impl<'st, 'res, 'row> ResultRow<'st, 'res, 'row> {
     /// *TODO: consider returning Option<uint>
     /// "This routine returns 0 if pStmt is an SQL statement that does
     /// not return data (for example an UPDATE)."*
-    #[unstable]
     pub fn column_count(&self) -> ColIx {
         let stmt = self.rows.statement.stmt;
         let result = unsafe { ffi::sqlite3_column_count(stmt) };
@@ -600,7 +595,7 @@ impl<'st, 'res, 'row> ResultRow<'st, 'res, 'row> {
         let i_col = col as c_int;
         let result = unsafe { ffi::sqlite3_column_type(stmt, i_col) };
         // fail on out-of-range result instead?
-        from_i32::<ColumnType>(result).unwrap_or(SQLITE_NULL)
+        ColumnType::from_i32(result).unwrap_or(SQLITE_NULL)
     }
 
     /// Get `int` value of a column.
@@ -640,8 +635,13 @@ impl<'st, 'res, 'row> ResultRow<'st, 'res, 'row> {
         if bs == ptr::null() {
             return None;
         }
-        let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) };
-        Some(unsafe { Vec::from_raw_buf(bs, len as usize)} )
+        let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) } as usize;
+        Some(unsafe { 
+            let mut dst = Vec::with_capacity(len);
+            dst.set_len(len);
+            ptr::copy_nonoverlapping(bs, dst.as_mut_ptr(), len);
+            dst
+        })
     }
 
 }
@@ -675,7 +675,7 @@ fn error_result(
     detail: Option<String>
     ) -> SqliteError {
     SqliteError {
-        kind: from_i32::<SqliteErrorCode>(result).unwrap(),
+        kind: SqliteErrorCode::from_i32(result).unwrap(),
         desc: desc,
         detail: detail
     }

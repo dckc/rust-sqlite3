@@ -84,15 +84,16 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
-
 
 extern crate libc;
 extern crate time;
 
 #[macro_use]
 extern crate bitflags;
+
+#[macro_use]
+extern crate enum_primitive;
 
 use std::error::{Error};
 use std::fmt::Display;
@@ -275,36 +276,38 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
-#[allow(non_camel_case_types)]
-#[allow(missing_docs)]
-pub enum SqliteErrorCode {
-    SQLITE_ERROR     =  1,
-    SQLITE_INTERNAL  =  2,
-    SQLITE_PERM      =  3,
-    SQLITE_ABORT     =  4,
-    SQLITE_BUSY      =  5,
-    SQLITE_LOCKED    =  6,
-    SQLITE_NOMEM     =  7,
-    SQLITE_READONLY  =  8,
-    SQLITE_INTERRUPT =  9,
-    SQLITE_IOERR     = 10,
-    SQLITE_CORRUPT   = 11,
-    SQLITE_NOTFOUND  = 12,
-    SQLITE_FULL      = 13,
-    SQLITE_CANTOPEN  = 14,
-    SQLITE_PROTOCOL  = 15,
-    SQLITE_EMPTY     = 16,
-    SQLITE_SCHEMA    = 17,
-    SQLITE_TOOBIG    = 18,
-    SQLITE_CONSTRAINT= 19,
-    SQLITE_MISMATCH  = 20,
-    SQLITE_MISUSE    = 21,
-    SQLITE_NOLFS     = 22,
-    SQLITE_AUTH      = 23,
-    SQLITE_FORMAT    = 24,
-    SQLITE_RANGE     = 25,
-    SQLITE_NOTADB    = 26
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+    #[allow(non_camel_case_types)]
+    #[allow(missing_docs)]
+    pub enum SqliteErrorCode {
+        SQLITE_ERROR     =  1,
+        SQLITE_INTERNAL  =  2,
+        SQLITE_PERM      =  3,
+        SQLITE_ABORT     =  4,
+        SQLITE_BUSY      =  5,
+        SQLITE_LOCKED    =  6,
+        SQLITE_NOMEM     =  7,
+        SQLITE_READONLY  =  8,
+        SQLITE_INTERRUPT =  9,
+        SQLITE_IOERR     = 10,
+        SQLITE_CORRUPT   = 11,
+        SQLITE_NOTFOUND  = 12,
+        SQLITE_FULL      = 13,
+        SQLITE_CANTOPEN  = 14,
+        SQLITE_PROTOCOL  = 15,
+        SQLITE_EMPTY     = 16,
+        SQLITE_SCHEMA    = 17,
+        SQLITE_TOOBIG    = 18,
+        SQLITE_CONSTRAINT= 19,
+        SQLITE_MISMATCH  = 20,
+        SQLITE_MISUSE    = 21,
+        SQLITE_NOLFS     = 22,
+        SQLITE_AUTH      = 23,
+        SQLITE_FORMAT    = 24,
+        SQLITE_RANGE     = 25,
+        SQLITE_NOTADB    = 26
+    }
 }
 
 /// Error results
@@ -339,17 +342,18 @@ impl Error for SqliteError {
 
 
 /// Fundamental Datatypes
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy, Clone)]
-#[allow(non_camel_case_types)]
-#[allow(missing_docs)]
-pub enum ColumnType {
-    SQLITE_INTEGER = 1,
-    SQLITE_FLOAT   = 2,
-    SQLITE_TEXT    = 3,
-    SQLITE_BLOB    = 4,
-    SQLITE_NULL    = 5
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+    #[allow(non_camel_case_types)]
+    #[allow(missing_docs)]
+    pub enum ColumnType {
+        SQLITE_INTEGER = 1,
+        SQLITE_FLOAT   = 2,
+        SQLITE_TEXT    = 3,
+        SQLITE_BLOB    = 4,
+        SQLITE_NULL    = 5
+    }
 }
-
 
 #[cfg(test)]
 mod bind_tests {

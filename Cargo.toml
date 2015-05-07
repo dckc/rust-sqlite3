@@ -22,6 +22,8 @@ name = "sqlite3"
 
 [dependencies]
 bitflags = "0.1.0"
+enum_primitive = "*"
+libc = "*"
 
 [dependencies.time]
 time = "0.1.5"
