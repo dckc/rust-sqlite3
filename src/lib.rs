@@ -24,10 +24,10 @@
 //! 
 //! use sqlite3::{
 //!     DatabaseConnection,
-//!     DatabaseUpdate,
 //!     Query,
 //!     ResultRowAccess,
 //!     SqliteResult,
+//!     StatementUpdate,
 //! };
 //! 
 //! #[derive(Debug)]
@@ -62,7 +62,7 @@
 //!     {
 //!         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
 //!                            VALUES ($1, $2)"));
-//!         let changes = try!(conn.update(&mut tx, &[&me.name, &me.time_created]));
+//!         let changes = try!(tx.update(&[&me.name, &me.time_created]));
 //!         assert_eq!(changes, 1);
 //!     }
 //! 
@@ -119,15 +119,14 @@ pub mod ffi;
 pub mod access;
 
 /// Mix in `update()` convenience function.
-pub trait DatabaseUpdate {
+pub trait StatementUpdate {
     /// Execute a statement after binding any parameters.
-    fn update<'db:'s, 's>(&'db self,
-                       stmt: &'s mut PreparedStatement<'db>,
-                       values: &[&ToSql]) -> SqliteResult<u64>;
+    fn update(&mut self,
+              values: &[&ToSql]) -> SqliteResult<u64>;
 }
 
 
-impl DatabaseUpdate for core::DatabaseConnection {
+impl StatementUpdate for core::PreparedStatement {
     /// Execute a statement after binding any parameters.
     ///
     /// When the statement is done, The [number of rows
@@ -138,12 +137,11 @@ impl DatabaseUpdate for core::DatabaseConnection {
     /// `UPDATE`).
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    fn update<'db:'s, 's>(&'db self,
-                       stmt: &'s mut PreparedStatement<'db>,
-                       values: &[&ToSql]) -> SqliteResult<u64> {
+    fn update(&mut self,
+              values: &[&ToSql]) -> SqliteResult<u64> {
         let check = {
-            try!(bind_values(stmt, values));
-            let mut results = stmt.execute();
+            try!(bind_values(self, values));
+            let mut results = self.execute();
             match try!(results.step()) {
                 None => Ok(()),
                 Some(_row) => Err(SqliteError {
@@ -159,26 +157,26 @@ impl DatabaseUpdate for core::DatabaseConnection {
 
 
 /// Mix in `query()` convenience function.
-pub trait Query<'s, F>
+pub trait Query<F>
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
-    fn query(&'s mut self,
+    fn query(&mut self,
              values: &[&ToSql],
-             each_row: &'s mut F
+             each_row: &mut F
              ) -> SqliteResult<()>;
 }
 
-impl<'db:'s, 's, F> Query<'s, F> for core::PreparedStatement<'db>
+impl<F> Query<F> for core::PreparedStatement
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
     ///
     /// For call `each_row(row)` for each resulting step,
     /// exiting on `Err`.
-    fn query(&'s mut self,
+    fn query(&mut self,
              values: &[&ToSql],
-             each_row: &'s mut F
+             each_row: &mut F
              ) -> SqliteResult<()>
     {
         try!(bind_values(self, values));
@@ -193,7 +191,7 @@ impl<'db:'s, 's, F> Query<'s, F> for core::PreparedStatement<'db>
     }
 }
 
-fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
+fn bind_values(s: &mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     for (ix, v) in values.iter().enumerate() {
         let p = ix as ParamIx + 1;
         try!(v.to_sql(s, p));
@@ -215,7 +213,7 @@ pub trait ResultRowAccess {
     fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
-impl<'stmt, 'res, 'row> ResultRowAccess for core::ResultRow<'stmt, 'res, 'row> {
+impl<'res, 'row> ResultRowAccess for core::ResultRow<'res, 'row> {
     fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,

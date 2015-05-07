@@ -7,10 +7,10 @@ use std::io::Write;
 use sqlite3::{
     Access,
     DatabaseConnection,
-    DatabaseUpdate,
     Query,
     ResultRowAccess,
     SqliteResult,
+    StatementUpdate,
 };
 use sqlite3::access;
 use sqlite3::access::flags::OPEN_READONLY;
@@ -75,7 +75,7 @@ fn make_people(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
     {
         let mut tx = try!(conn.prepare("INSERT INTO person (id, name)
                            VALUES (0, 'Dan')"));
-        let changes = try!(conn.update(&mut tx, &[]));
+        let changes = try!(tx.update(&[]));
         assert_eq!(changes, 1);
     }
 

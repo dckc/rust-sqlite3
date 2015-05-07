@@ -102,8 +102,8 @@ use std::ffi as std_ffi;
 use std::mem;
 use std::ptr;
 use std::str;
-use std::marker::PhantomData;
 use std::ffi::CStr;
+use std::rc::Rc;
 use time::Duration;
 
 use self::SqliteOk::SQLITE_OK;
@@ -144,17 +144,12 @@ enum_from_primitive! {
     }
 }
 
-/// A connection to a sqlite3 database.
-pub struct DatabaseConnection {
+struct Database {
     // not pub so that nothing outside this module
     // interferes with the lifetime
-    db: *mut ffi::sqlite3,
-
-    // whether to copy errmsg() to error detail
-    detailed: bool
+    handle: *mut ffi::sqlite3,
 }
-
-impl Drop for DatabaseConnection {
+impl Drop for Database {
     /// Release resources associated with connection.
     ///
     /// # Failure
@@ -168,10 +163,19 @@ impl Drop for DatabaseConnection {
     /// [1]: http://www.sqlite.org/c3ref/close.html
     fn drop(&mut self) {
         // sqlite3_close_v2 is for gced languages.
-        let ok = unsafe { ffi::sqlite3_close(self.db) };
+        let ok = unsafe { ffi::sqlite3_close(self.handle) };
         assert_eq!(ok, SQLITE_OK as c_int);
     }
 }
+
+/// A connection to a sqlite3 database.
+pub struct DatabaseConnection {
+    db: Rc<Database>,
+    
+    // whether to copy errmsg() to error detail
+    detailed: bool
+}
+
 
 
 /// Authorization to connect to database.
@@ -209,7 +213,10 @@ impl DatabaseConnection {
         let mut db = ptr::null_mut();
         let result = access.open(&mut db);
         match decode_result(result, "sqlite3_open_v2", Some(db)) {
-            Ok(()) => Ok(DatabaseConnection { db: db, detailed: true }),
+            Ok(()) => Ok(DatabaseConnection {
+                db: Rc::new(Database { handle: db}), 
+                detailed: true,
+            }),
             Err(err) => {
                 // "Whether or not an error occurs when it is opened,
                 // resources associated with the database connection
@@ -243,7 +250,7 @@ impl DatabaseConnection {
     }
 
     /// Prepare/compile an SQL statement.
-    pub fn prepare<'db:'st, 'st>(&'db self, sql: &str) -> SqliteResult<PreparedStatement<'st>> {
+    pub fn prepare<'db:'st, 'st>(&'db self, sql: &str) -> SqliteResult<PreparedStatement> {
         match self.prepare_with_offset(sql) {
             Ok((cur, _)) => Ok(cur),
             Err(e) => Err(e)
@@ -255,16 +262,16 @@ impl DatabaseConnection {
     /// *TODO: give caller a safe way to use the offset. Perhaps
     /// return a &'x str?*
     pub fn prepare_with_offset<'db:'st, 'st>(&'db self, sql: &str)
-                                    -> SqliteResult<(PreparedStatement<'st>, usize)> {
+                                    -> SqliteResult<(PreparedStatement, usize)> {
         let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
         let z_sql = str_charstar(sql).as_ptr();
         let n_byte = sql.len() as c_int;
-        let r = unsafe { ffi::sqlite3_prepare_v2(self.db, z_sql, n_byte, &mut stmt, &mut tail) };
-        match decode_result(r, "sqlite3_prepare_v2", maybe(self.detailed, self.db)) {
+        let r = unsafe { ffi::sqlite3_prepare_v2(self.db.handle, z_sql, n_byte, &mut stmt, &mut tail) };
+        match decode_result(r, "sqlite3_prepare_v2", maybe(self.detailed, self.db.handle)) {
             Ok(()) => {
                 let offset = tail as usize - z_sql as usize;
-                Ok((PreparedStatement { stmt: stmt , detailed: self.detailed, marker: PhantomData }, offset))
+                Ok((PreparedStatement { stmt: stmt , db: self.db.clone(), detailed: self.detailed }, offset))
             },
             Err(code) => Err(code)
         }
@@ -280,7 +287,7 @@ impl DatabaseConnection {
     ///
     /// cf `ffi::sqlite3_errmsg`.
     pub fn errmsg(&mut self) -> String {
-        DatabaseConnection::_errmsg(self.db)
+        DatabaseConnection::_errmsg(self.db.handle)
     }
 
     fn _errmsg(db: *mut ffi::sqlite3) -> String {
@@ -297,13 +304,12 @@ impl DatabaseConnection {
     ///  - TODO: callback support?
     ///  - TODO: errmsg support
     pub fn exec(&mut self, sql: &str) -> SqliteResult<()> {
-        let db = self.db;
         let c_sql = try!(std_ffi::CString::new(sql.as_bytes()));
         let result = unsafe {
-            ffi::sqlite3_exec(db, c_sql.as_ptr(), None,
+            ffi::sqlite3_exec(self.db.handle, c_sql.as_ptr(), None,
                               ptr::null_mut(), ptr::null_mut())
         };
-        decode_result(result, "sqlite3_exec", maybe(self.detailed, self.db))
+        decode_result(result, "sqlite3_exec", maybe(self.detailed, self.db.handle))
     }
 
     /// Return the number of database rows that were changed or
@@ -312,8 +318,8 @@ impl DatabaseConnection {
     ///
     /// cf `sqlite3_changes`.
     pub fn changes(&self) -> u64 {
-        let db = self.db;
-        let count = unsafe { ffi::sqlite3_changes(db) };
+        let dbh = self.db.handle;
+        let count = unsafe { ffi::sqlite3_changes(dbh) };
         count as u64
     }
 
@@ -321,8 +327,8 @@ impl DatabaseConnection {
     /// If duration is zero or negative, turns off busy handler.
     pub fn busy_timeout(&mut self, d: Duration) -> SqliteResult<()> {
         let ms = d.num_milliseconds() as i32;
-        let result = unsafe { ffi::sqlite3_busy_timeout(self.db, ms) };
-        decode_result(result, "sqlite3_busy_timeout", maybe(self.detailed, self.db))
+        let result = unsafe { ffi::sqlite3_busy_timeout(self.db.handle, ms) };
+        decode_result(result, "sqlite3_busy_timeout", maybe(self.detailed, self.db.handle))
     }
 
     /// Return the rowid of the most recent successful INSERT into
@@ -330,13 +336,13 @@ impl DatabaseConnection {
     ///
     /// cf `sqlite3_last_insert_rowid`
     pub fn last_insert_rowid(&self) -> i64 {
-        unsafe { ffi::sqlite3_last_insert_rowid(self.db) }
+        unsafe { ffi::sqlite3_last_insert_rowid(self.db.handle) }
     }
 
     /// Expose the underlying `sqlite3` struct pointer for use
     /// with the `ffi` module.
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3 {
-        self.db
+        self.db.handle
     }
 }
 
@@ -358,13 +364,13 @@ pub fn str_charstar<'a>(s: &'a str) -> std_ffi::CString {
 }
 
 /// A prepared statement.
-pub struct PreparedStatement<'st> {
+pub struct PreparedStatement {
+    db: Rc<Database>,
     stmt: *mut ffi::sqlite3_stmt,
     detailed: bool,
-    marker: PhantomData<&'st DatabaseConnection>,
 }
 
-impl<'st> Drop for PreparedStatement<'st> {
+impl Drop for PreparedStatement {
     fn drop(&mut self) {
         unsafe {
 
@@ -387,9 +393,9 @@ impl<'st> Drop for PreparedStatement<'st> {
 /// 1-indexed
 pub type ParamIx = u16;
 
-impl<'st:'res, 'res> PreparedStatement<'st> {
+impl PreparedStatement {
     /// Begin executing a statement.
-    pub fn execute(&'res mut self) -> ResultSet<'st, 'res> {
+    pub fn execute(&mut self) -> ResultSet {
         ResultSet { statement: self }
     }
 }
@@ -398,7 +404,7 @@ impl<'st:'res, 'res> PreparedStatement<'st> {
 /// **Note:** "The leftmost SQL parameter has an index of 1."[1]
 ///
 /// [1]: http://www.sqlite.org/c3ref/bind_blob.html
-impl<'st> PreparedStatement<'st> {
+impl PreparedStatement {
 
     /// Opt out of copies of error message details.
     pub fn ignore_detail(&mut self) {
@@ -475,7 +481,7 @@ impl<'st> PreparedStatement<'st> {
     }
 
     /// Clear all parameter bindings.
-    pub fn clear_bindings(&'st mut self) {
+    pub fn clear_bindings(&mut self) {
         // We ignore the return value, since no return codes are documented.
         unsafe { ffi::sqlite3_clear_bindings(self.stmt) };
     }
@@ -492,12 +498,23 @@ impl<'st> PreparedStatement<'st> {
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3_stmt {
         self.stmt
     }
+    
+    /// Return the number of database rows that were changed or
+    /// inserted or deleted by this statement if it is the most
+    /// recently run on its database connection.
+    ///
+    /// cf `sqlite3_changes`.
+    pub fn changes(&self) -> u64 {
+        let dbh = self.db.handle;
+        let count = unsafe { ffi::sqlite3_changes(dbh) };
+        count as u64
+    }
 }
 
 
 /// Results of executing a `prepare()`d statement.
-pub struct ResultSet<'st:'res, 'res> {
-    statement: &'res mut PreparedStatement<'st>,
+pub struct ResultSet<'res> {
+    statement: &'res mut PreparedStatement,
 }
 
 enum_from_primitive! {
@@ -509,7 +526,7 @@ enum_from_primitive! {
     }
 }
 
-impl<'st, 'res> Drop for ResultSet<'st, 'res> {
+impl<'res> Drop for ResultSet<'res> {
     fn drop(&mut self) {
 
         // We ignore the return code from reset because it has already
@@ -523,13 +540,13 @@ impl<'st, 'res> Drop for ResultSet<'st, 'res> {
 }
 
 
-impl<'st:'res, 'res:'row, 'row> ResultSet<'st, 'res> {
+impl<'res:'row, 'row> ResultSet<'res> {
     /// Execute the next step of a prepared statement.
     ///
     /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
     /// so we need a lifetime constraint. The unfortunate result is that
     ///  `ResultSet` cannot implement the `Iterator` trait.
-    pub fn step(&'row mut self) -> SqliteResult<Option<ResultRow<'st, 'res, 'row>>> {
+    pub fn step(&'row mut self) -> SqliteResult<Option<ResultRow<'res, 'row>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match Step::from_i32(result) {
             Some(SQLITE_ROW) => {
@@ -543,8 +560,8 @@ impl<'st:'res, 'res:'row, 'row> ResultSet<'st, 'res> {
 
 
 /// Access to columns of a row.
-pub struct ResultRow<'st:'res, 'res:'row, 'row> {
-    rows: &'row mut ResultSet<'st, 'res>
+pub struct ResultRow<'res:'row, 'row> {
+    rows: &'row mut ResultSet<'res>
 }
 
 /// Column index for accessing parts of a row.
@@ -559,7 +576,7 @@ pub type ColIx = u32;
 /// `sqlite3_column_type()` is undefined."[1]
 ///
 /// [1]: http://www.sqlite.org/c3ref/column_blob.html
-impl<'st, 'res, 'row> ResultRow<'st, 'res, 'row> {
+impl<'res, 'row> ResultRow<'res, 'row> {
 
     /// cf `sqlite3_column_count`
     ///
