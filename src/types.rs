@@ -7,8 +7,6 @@ use super::{
 };
 use super::ColumnType::SQLITE_NULL;
 
-use std::error::FromError;
-
 use time;
 
 /// Values that can be bound to parameters in prepared statements.
@@ -62,6 +60,16 @@ impl FromSql for f64 {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<f64> { Ok(row.column_double(col)) }
 }
 
+impl ToSql for bool {
+    fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
+        s.bind_int(ix, if *self { 1 } else { 0 })
+    }
+}
+
+impl FromSql for bool {
+    fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<bool> { Ok(row.column_int(col)!=0) }
+}
+
 impl<T: ToSql + Clone> ToSql for Option<T> {
     fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
         match (*self).clone() {
@@ -93,6 +101,12 @@ impl FromSql for String {
     }
 }
 
+impl<'a> ToSql for &'a [u8] {
+    fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
+        s.bind_blob(ix, *self)
+    }
+}
+
 impl FromSql for Vec<u8> {
     fn from_sql(row: &mut ResultRow, col: ColIx) -> SqliteResult<Vec<u8>> {
         Ok(row.column_blob(col).unwrap_or(Vec::new()))
@@ -114,8 +128,8 @@ impl FromSql for time::Tm {
     }
 }
 
-impl FromError<time::ParseError> for SqliteError {
-    fn from_error(err: time::ParseError) -> SqliteError {
+impl From<time::ParseError> for SqliteError {
+    fn from(err: time::ParseError) -> SqliteError {
         SqliteError {
             kind: SqliteErrorCode::SQLITE_MISMATCH,
             desc: "Time did not match expected format",

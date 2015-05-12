@@ -1,7 +1,7 @@
 [package]
 
 name = "rust-sqlite"
-version = "0.1.3"
+version = "0.2.0"
 authors = ["Dan Connolly <dckc@madmode.com>"]
 keywords = ["database", "sql"]
 
@@ -22,6 +22,8 @@ name = "sqlite3"
 
 [dependencies]
 bitflags = "0.1.0"
+enum_primitive = "*"
+libc = "*"
 
 [dependencies.time]
 time = "0.1.5"

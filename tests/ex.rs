@@ -6,10 +6,10 @@ use time::Timespec;
 
 use sqlite3::{
     DatabaseConnection,
-    DatabaseUpdate,
     Query,
     ResultRowAccess,
     SqliteResult,
+    StatementUpdate,
 };
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ fn io() -> SqliteResult<Vec<Person>> {
     {
         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
                            VALUES ($1, $2)"));
-        let changes = try!(conn.update(&mut tx, &[&me.name, &me.time_created]));
+        let changes = try!(tx.update(&[&me.name, &me.time_created]));
         assert_eq!(changes, 1);
     };
 

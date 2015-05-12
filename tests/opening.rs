@@ -1,5 +1,3 @@
-#![feature(convert, exit_status)]
-
 extern crate sqlite3;
 
 use std::default::Default;
@@ -9,10 +7,10 @@ use std::io::Write;
 use sqlite3::{
     Access,
     DatabaseConnection,
-    DatabaseUpdate,
     Query,
     ResultRowAccess,
     SqliteResult,
+    StatementUpdate,
 };
 use sqlite3::access;
 use sqlite3::access::flags::OPEN_READONLY;
@@ -46,7 +44,7 @@ pub fn main() {
 
 
     fn lose(why: &str) {
-        env::set_exit_status(1);
+        // FIXME: Set the exit status once that is stabilized
         let stderr = std::io::stderr();
         let mut stderr_lock = stderr.lock();
         stderr_lock.write_fmt(format_args!("{}", why)).unwrap()
@@ -77,7 +75,7 @@ fn make_people(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
     {
         let mut tx = try!(conn.prepare("INSERT INTO person (id, name)
                            VALUES (0, 'Dan')"));
-        let changes = try!(conn.update(&mut tx, &[]));
+        let changes = try!(tx.update(&[]));
         assert_eq!(changes, 1);
     }
 

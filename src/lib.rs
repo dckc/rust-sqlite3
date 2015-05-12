@@ -24,10 +24,10 @@
 //! 
 //! use sqlite3::{
 //!     DatabaseConnection,
-//!     DatabaseUpdate,
 //!     Query,
 //!     ResultRowAccess,
 //!     SqliteResult,
+//!     StatementUpdate,
 //! };
 //! 
 //! #[derive(Debug)]
@@ -62,7 +62,7 @@
 //!     {
 //!         let mut tx = try!(conn.prepare("INSERT INTO person (name, time_created)
 //!                            VALUES ($1, $2)"));
-//!         let changes = try!(conn.update(&mut tx, &[&me.name, &me.time_created]));
+//!         let changes = try!(tx.update(&[&me.name, &me.time_created]));
 //!         assert_eq!(changes, 1);
 //!     }
 //! 
@@ -84,15 +84,16 @@
 
 #![crate_name = "sqlite3"]
 #![crate_type = "lib"]
-#![feature(convert, core, collections, unsafe_destructor, std_misc, libc)]
 #![warn(missing_docs)]
-
 
 extern crate libc;
 extern crate time;
 
 #[macro_use]
 extern crate bitflags;
+
+#[macro_use]
+extern crate enum_primitive;
 
 use std::error::{Error};
 use std::fmt::Display;
@@ -118,15 +119,14 @@ pub mod ffi;
 pub mod access;
 
 /// Mix in `update()` convenience function.
-pub trait DatabaseUpdate {
+pub trait StatementUpdate {
     /// Execute a statement after binding any parameters.
-    fn update<'db:'s, 's>(&'db self,
-                       stmt: &'s mut PreparedStatement<'db>,
-                       values: &[&ToSql]) -> SqliteResult<u64>;
+    fn update(&mut self,
+              values: &[&ToSql]) -> SqliteResult<u64>;
 }
 
 
-impl DatabaseUpdate for core::DatabaseConnection {
+impl StatementUpdate for core::PreparedStatement {
     /// Execute a statement after binding any parameters.
     ///
     /// When the statement is done, The [number of rows
@@ -137,12 +137,11 @@ impl DatabaseUpdate for core::DatabaseConnection {
     /// `UPDATE`).
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    fn update<'db:'s, 's>(&'db self,
-                       stmt: &'s mut PreparedStatement<'db>,
-                       values: &[&ToSql]) -> SqliteResult<u64> {
+    fn update(&mut self,
+              values: &[&ToSql]) -> SqliteResult<u64> {
         let check = {
-            try!(bind_values(stmt, values));
-            let mut results = stmt.execute();
+            try!(bind_values(self, values));
+            let mut results = self.execute();
             match try!(results.step()) {
                 None => Ok(()),
                 Some(_row) => Err(SqliteError {
@@ -158,26 +157,26 @@ impl DatabaseUpdate for core::DatabaseConnection {
 
 
 /// Mix in `query()` convenience function.
-pub trait Query<'s, F>
+pub trait Query<F>
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
-    fn query(&'s mut self,
+    fn query(&mut self,
              values: &[&ToSql],
-             each_row: &'s mut F
+             each_row: &mut F
              ) -> SqliteResult<()>;
 }
 
-impl<'db:'s, 's, F> Query<'s, F> for core::PreparedStatement<'db>
+impl<F> Query<F> for core::PreparedStatement
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
     ///
     /// For call `each_row(row)` for each resulting step,
     /// exiting on `Err`.
-    fn query(&'s mut self,
+    fn query(&mut self,
              values: &[&ToSql],
-             each_row: &'s mut F
+             each_row: &mut F
              ) -> SqliteResult<()>
     {
         try!(bind_values(self, values));
@@ -192,7 +191,7 @@ impl<'db:'s, 's, F> Query<'s, F> for core::PreparedStatement<'db>
     }
 }
 
-fn bind_values<'db>(s: &'db mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
+fn bind_values(s: &mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     for (ix, v) in values.iter().enumerate() {
         let p = ix as ParamIx + 1;
         try!(v.to_sql(s, p));
@@ -214,7 +213,7 @@ pub trait ResultRowAccess {
     fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T>;
 }
 
-impl<'stmt, 'res, 'row> ResultRowAccess for core::ResultRow<'stmt, 'res, 'row> {
+impl<'res, 'row> ResultRowAccess for core::ResultRow<'res, 'row> {
     fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
@@ -275,36 +274,38 @@ pub type SqliteResult<T> = Result<T, SqliteError>;
 /// `Some(...)` or `None` from `ResultSet::next()`.
 ///
 /// [codes]: http://www.sqlite.org/c3ref/c_abort.html
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
-#[allow(non_camel_case_types)]
-#[allow(missing_docs)]
-pub enum SqliteErrorCode {
-    SQLITE_ERROR     =  1,
-    SQLITE_INTERNAL  =  2,
-    SQLITE_PERM      =  3,
-    SQLITE_ABORT     =  4,
-    SQLITE_BUSY      =  5,
-    SQLITE_LOCKED    =  6,
-    SQLITE_NOMEM     =  7,
-    SQLITE_READONLY  =  8,
-    SQLITE_INTERRUPT =  9,
-    SQLITE_IOERR     = 10,
-    SQLITE_CORRUPT   = 11,
-    SQLITE_NOTFOUND  = 12,
-    SQLITE_FULL      = 13,
-    SQLITE_CANTOPEN  = 14,
-    SQLITE_PROTOCOL  = 15,
-    SQLITE_EMPTY     = 16,
-    SQLITE_SCHEMA    = 17,
-    SQLITE_TOOBIG    = 18,
-    SQLITE_CONSTRAINT= 19,
-    SQLITE_MISMATCH  = 20,
-    SQLITE_MISUSE    = 21,
-    SQLITE_NOLFS     = 22,
-    SQLITE_AUTH      = 23,
-    SQLITE_FORMAT    = 24,
-    SQLITE_RANGE     = 25,
-    SQLITE_NOTADB    = 26
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+    #[allow(non_camel_case_types)]
+    #[allow(missing_docs)]
+    pub enum SqliteErrorCode {
+        SQLITE_ERROR     =  1,
+        SQLITE_INTERNAL  =  2,
+        SQLITE_PERM      =  3,
+        SQLITE_ABORT     =  4,
+        SQLITE_BUSY      =  5,
+        SQLITE_LOCKED    =  6,
+        SQLITE_NOMEM     =  7,
+        SQLITE_READONLY  =  8,
+        SQLITE_INTERRUPT =  9,
+        SQLITE_IOERR     = 10,
+        SQLITE_CORRUPT   = 11,
+        SQLITE_NOTFOUND  = 12,
+        SQLITE_FULL      = 13,
+        SQLITE_CANTOPEN  = 14,
+        SQLITE_PROTOCOL  = 15,
+        SQLITE_EMPTY     = 16,
+        SQLITE_SCHEMA    = 17,
+        SQLITE_TOOBIG    = 18,
+        SQLITE_CONSTRAINT= 19,
+        SQLITE_MISMATCH  = 20,
+        SQLITE_MISUSE    = 21,
+        SQLITE_NOLFS     = 22,
+        SQLITE_AUTH      = 23,
+        SQLITE_FORMAT    = 24,
+        SQLITE_RANGE     = 25,
+        SQLITE_NOTADB    = 26
+    }
 }
 
 /// Error results
@@ -339,17 +340,18 @@ impl Error for SqliteError {
 
 
 /// Fundamental Datatypes
-#[derive(Debug, PartialEq, Eq, FromPrimitive, Copy)]
-#[allow(non_camel_case_types)]
-#[allow(missing_docs)]
-pub enum ColumnType {
-    SQLITE_INTEGER = 1,
-    SQLITE_FLOAT   = 2,
-    SQLITE_TEXT    = 3,
-    SQLITE_BLOB    = 4,
-    SQLITE_NULL    = 5
+enum_from_primitive! {
+    #[derive(Debug, PartialEq, Eq, Copy, Clone)]
+    #[allow(non_camel_case_types)]
+    #[allow(missing_docs)]
+    pub enum ColumnType {
+        SQLITE_INTEGER = 1,
+        SQLITE_FLOAT   = 2,
+        SQLITE_TEXT    = 3,
+        SQLITE_BLOB    = 4,
+        SQLITE_NULL    = 5
+    }
 }
-
 
 #[cfg(test)]
 mod bind_tests {
@@ -413,7 +415,8 @@ mod bind_tests {
         let db = try!(DatabaseConnection::in_memory());
         let mut s = try!(db.prepare(sql));
         let mut rows = s.execute();
-        Ok(f(&mut rows))
+        let x = f(&mut rows);
+        return Ok(x);
     }
 
     #[test]
@@ -429,7 +432,7 @@ mod bind_tests {
                     match rows.step() {
                         Ok(Some(ref mut row)) => {
                             count += 1;
-                            sum += row.get("col1")
+                            sum += row.column_int(0);
                         },
                         _ => break
                     }

@@ -7,7 +7,6 @@
 //!
 //! *TODO: move `mod access` to its own crate so that linking to `sqlite3` doesn't
 //! bring in this ambient authority.*
-#![unstable]
 
 use libc::c_int;
 use std::ptr;
@@ -32,7 +31,6 @@ pub mod flags;
 /// Refer to [Opening A New Database][open] regarding URI filenames.
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
-#[stable]
 pub fn open(filename: &str, flags: Option<OpenFlags>) -> SqliteResult<DatabaseConnection> {
     DatabaseConnection::new(
         ByFilename {
