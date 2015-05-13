@@ -101,6 +101,7 @@ use libc::{c_int, c_char};
 use std::ffi as std_ffi;
 use std::mem;
 use std::ptr;
+use std::slice;
 use std::str;
 use std::ffi::CStr;
 use std::rc::Rc;
@@ -638,14 +639,21 @@ impl<'res, 'row> ResultRow<'res, 'row> {
 
     /// Get `Option<String>` (aka text) value of a column.
     pub fn column_text(&mut self, col: ColIx) -> Option<String> {
-        let stmt = self.rows.statement.stmt;
-        let i_col = col as c_int;
-        let s = unsafe { ffi::sqlite3_column_text(stmt, i_col) };
-        charstar_str(&(s as *const c_char)).map(|f: &str| { f.to_string() })
+        self.column_str(col).map(|s| s.to_string())
+    }
+
+    /// Get `Option<&str>` (aka text) value of a column.
+    pub fn column_str<'a>(&'a mut self, col: ColIx) -> Option<&'a str> {
+        self.column_slice(col).and_then(|slice| str::from_utf8(slice).ok() )
     }
 
     /// Get `Option<Vec<u8>>` (aka blob) value of a column.
     pub fn column_blob(&mut self, col: ColIx) -> Option<Vec<u8>> {
+        self.column_slice(col).map(|bs| bs.to_vec())
+    }
+
+    /// Get `Option<&[u8]>` (aka blob) value of a column.
+    pub fn column_slice<'a>(&'a mut self, col: ColIx) -> Option<&'a [u8]> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         let bs = unsafe { ffi::sqlite3_column_blob(stmt, i_col) } as *const ::libc::c_uchar;
@@ -653,14 +661,8 @@ impl<'res, 'row> ResultRow<'res, 'row> {
             return None;
         }
         let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) } as usize;
-        Some(unsafe { 
-            let mut dst = Vec::with_capacity(len);
-            dst.set_len(len);
-            ptr::copy_nonoverlapping(bs, dst.as_mut_ptr(), len);
-            dst
-        })
+        Some( unsafe { slice::from_raw_parts(bs, len) } )
     }
-
 }
 
 
@@ -725,6 +727,7 @@ mod test_opening {
 #[cfg(test)]
 mod tests {
     use super::{DatabaseConnection, SqliteResult, ResultSet};
+    use std::str;
 
     #[test]
     fn stmt_new_types() {
@@ -815,6 +818,14 @@ mod tests {
         assert_eq!(oops.err().unwrap().detail(), None)
     }
 
+    #[test]
+    fn non_utf8_str() {
+        let mut stmt = DatabaseConnection::in_memory().unwrap().prepare("SELECT x'4546FF'").unwrap();
+        let mut rows = stmt.execute();
+        let mut row = rows.step().unwrap().unwrap();
+        assert_eq!(row.column_str(0), None);
+        assert!(str::from_utf8(&[0x45u8, 0x46, 0xff]).is_err());
+    }
 
 }
 

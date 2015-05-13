@@ -2,7 +2,10 @@
 
 name = "rust-sqlite"
 version = "0.2.0"
-authors = ["Dan Connolly <dckc@madmode.com>"]
+authors = [
+  "Dan Connolly <dckc@madmode.com>",
+  "Peter Reid <peter.d.reid@gmail.com>"
+]
 keywords = ["database", "sql"]
 
 exclude = [
