@@ -638,22 +638,22 @@ impl<'res, 'row> ResultRow<'res, 'row> {
     }
 
     /// Get `Option<String>` (aka text) value of a column.
-    pub fn column_text(&mut self, col: ColIx) -> Option<String> {
+    pub fn column_text(&self, col: ColIx) -> Option<String> {
         self.column_str(col).map(|s| s.to_string())
     }
 
     /// Get `Option<&str>` (aka text) value of a column.
-    pub fn column_str<'a>(&'a mut self, col: ColIx) -> Option<&'a str> {
+    pub fn column_str<'a>(&'a self, col: ColIx) -> Option<&'a str> {
         self.column_slice(col).and_then(|slice| str::from_utf8(slice).ok() )
     }
 
     /// Get `Option<Vec<u8>>` (aka blob) value of a column.
-    pub fn column_blob(&mut self, col: ColIx) -> Option<Vec<u8>> {
+    pub fn column_blob(&self, col: ColIx) -> Option<Vec<u8>> {
         self.column_slice(col).map(|bs| bs.to_vec())
     }
 
     /// Get `Option<&[u8]>` (aka blob) value of a column.
-    pub fn column_slice<'a>(&'a mut self, col: ColIx) -> Option<&'a [u8]> {
+    pub fn column_slice<'a>(&'a self, col: ColIx) -> Option<&'a [u8]> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         let bs = unsafe { ffi::sqlite3_column_blob(stmt, i_col) } as *const ::libc::c_uchar;
@@ -822,7 +822,7 @@ mod tests {
     fn non_utf8_str() {
         let mut stmt = DatabaseConnection::in_memory().unwrap().prepare("SELECT x'4546FF'").unwrap();
         let mut rows = stmt.execute();
-        let mut row = rows.step().unwrap().unwrap();
+        let row = rows.step().unwrap().unwrap();
         assert_eq!(row.column_str(0), None);
         assert!(str::from_utf8(&[0x45u8, 0x46, 0xff]).is_err());
     }
