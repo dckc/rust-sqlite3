@@ -11,8 +11,7 @@ Share and enjoy. LICENSE: MIT.
 
 ## Documentation, Status
 
-[rust-sqlite3 package documentation][docs] is hosted on rust-ci. Three
-layers of API are provided:
+Three layers of API are provided:
 
   - `mod ffi` provides exhaustive, though unsafe, [bindgen] bindings for `libsqlite.h`
   - `mod core` provides a minimal safe interface to the basic sqlite3 API
@@ -33,6 +32,7 @@ have not used the library beyond trivial integration tests.
 
 ### TODO
 
+  - Migrate [rust-sqlite3 package documentation][docs] to somewhere that stays up-to-date. (#31)
   - another thorough read-through of the sqlite API intro,
     with unit tests to match; especially...
     - unit testing other than the happy-paths
