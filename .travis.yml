@@ -1,29 +1,38 @@
-# Continuous Integration build configuration
-#
-# cribbed from sfackler
-#  - https://github.com/sfackler/rust-postgres/blob/master/.travis.yml
-#
-# See also:
-#  - http://www.rust-ci.org/p/390/artifactconf
-
 language: rust
+addons:
+  apt:
+    packages:
+      - libcurl4-openssl-dev
+      - libelf-dev
+      - libdw-dev
+      - sqlite3
+      - libsqlite3-dev
+
+rust:
+  - nightly
+  - beta
+  - stable
+
+# load travis-cargo
+before_script:
+  - |
+      pip install 'travis-cargo<0.2' --user &&
+      export PATH=$HOME/.local/bin:$PATH
+
+# the main build
+script:
+  - |
+      travis-cargo build &&
+      travis-cargo test &&
+      travis-cargo bench &&
+      travis-cargo --only stable doc
+after_success:
+  # upload the documentation from the build with stable (automatically only actually
+  # runs on the master branch, not individual PRs)
+  - travis-cargo --only stable doc-upload
+  # measure code coverage and upload to coveralls.io
+  - travis-cargo coveralls --no-sudo
+
 env:
   global:
-    - secure: eaw/De/05/yXkxnoeXzHzmbD1KVN3+6W2M5NRQH7Yxm8ep2WD4DUpUpa/bQy5VzwgDoptVIfvKBliLQrbtKkEZZAFvIr3x0bm431hB5y6kj3wbWazsSJ7RU0mYksaraDdCnQXxsqmz/oWGGOFgy7+UAkeOktx60+x6/wqbYYKRk=
-before_install:
- - echo "yes" | sudo add-apt-repository ppa:travis-ci/sqlite3
- - sudo apt-get update -qq
- - sudo apt-get install -qq libsqlite3-dev
-script:
-  - cargo build
-  - cargo test
-  - cargo doc --no-deps
-after_script:
-  - curl http://www.rust-ci.org/artifacts/put?t=$RUSTCI_TOKEN | sh
-
-
-# In travis-ci-rust-example, it just has:
-#   language: rust
-# but this doesn't seem to suffice for building docs.
-#  - https://github.com/travis-ci/travis-ci-rust-example/blob/master/.travis.yml
-
+    - secure: "hMalmHYxRhzP/zLuKHfi9Zhz7mPeCugGJznazgyYeNBNZiWWoZSVBSTE7I0MFXVymsb72wK8Z3FXGa2cu9zozSbX3f938516t9lBtQakUUfLTG3uHVvn971UEeXRRN2hvaI9rMzy1GqbcHZ+zgtMJ0FdiTQiwklem/xS8qpgkY5ovcAg93q3POdnRdqL2kwQlUPQFUZ7WxAiotVmU/ejwWz4GN3kzl3umyHlxZTxgG3gOmu6BM+GdyghmBqettQLEF4mfsOpj9fCH1pH/9lox5IHHT1MutM0hNbD4A85FKFID6g6UCpvQA/7SY/vFVr94ah6osCo8t3GbXxJ0eBlnecluLWIWmtmBKxEh+N9Q3FsDzF11g5mxF5YrowuJlwp0RE215Jt6oDKx3xuUhOx0kW2gq7gIQ4dFxikroZfA/iHR660Mvq9IL7gGFyrKAPngx8joXh1h5l1MOr7T1xv9qaInNdgPVKlM9tt3F5Bb+gFk1RiNCTyhVmDKLLFQh6lHLyFN5/WPf26x8+rZq/IRCjbFqesMNQQqbPcAJ89VjL9TPohBl9Aw3321c6RiJOxNFtz+4Fcw0i48m23M7aYEqz+xfSlPvtRcTjFObXMRUiaoB6zQj78yNjWsN2ZfgBua3EqZ5sLkjEIjd7NLSZzYCg3k5oRcXOSXGb2r2vLRps="
