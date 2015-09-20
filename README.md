@@ -11,6 +11,8 @@ Share and enjoy. LICENSE: MIT.
 
 ## Documentation, Status
 
+[View the documentation online][docs]
+
 Three layers of API are provided:
 
   - `mod ffi` provides exhaustive, though unsafe, [bindgen] bindings for `libsqlite.h`
@@ -21,18 +23,11 @@ Three layers of API are provided:
 The API design is perhaps stabilizing, though testing is uneven and I
 have not used the library beyond trivial integration tests.
 
-[docs]: http://www.rust-ci.org/dckc/rust-sqlite3/doc/sqlite3/
-[bindgen]: https://github.com/crabtw/rust-bindgen
-
-<div>
-<a href="https://travis-ci.org/dckc/rust-sqlite3/builds">
- <img alt="build status" src="https://travis-ci.org/dckc/rust-sqlite3.svg?branch=master"/>
-</a>
-</div>
+[docs]: http://dgilman.github.io/rust-sqlite3
+[![Build Status](https://travis-ci.org/dgilman/rust-sqlite3.svg?branch=master)](https://travis-ci.org/dgilman/rust-sqlite3)
 
 ### TODO
 
-  - Migrate [rust-sqlite3 package documentation][docs] to somewhere that stays up-to-date. (#31)
   - another thorough read-through of the sqlite API intro,
     with unit tests to match; especially...
     - unit testing other than the happy-paths
@@ -53,6 +48,7 @@ native API rather than the traditional POSIX environment.
 [sandstorm]: https://sandstorm.io/
 [capsec]: http://www.erights.org/elib/capability/ode/ode-capabilities.html
 [acronymy]: https://github.com/dwrensha/acronymy
+[bindgen]: https://github.com/crabtw/rust-bindgen
 
 I started poring over the code and followed the dependency link to
 linuxfood's [rustsqlite][]. I started working on a [memory safety

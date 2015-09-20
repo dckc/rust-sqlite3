@@ -17,6 +17,7 @@ exclude = [
 description = "Rustic bindings for sqlite3"
 repository = "https://github.com/dckc/rust-sqlite3"
 readme = "README.md"
+documentation = "http://dgilman.github.io/rust-sqlite3"
 
 license = "MIT"
 
