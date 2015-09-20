@@ -23,8 +23,8 @@ Three layers of API are provided:
 The API design is perhaps stabilizing, though testing is uneven and I
 have not used the library beyond trivial integration tests.
 
-[docs]: http://dgilman.github.io/rust-sqlite3
-[![Build Status](https://travis-ci.org/dgilman/rust-sqlite3.svg?branch=master)](https://travis-ci.org/dgilman/rust-sqlite3)
+[docs]: http://dckc.github.io/rust-sqlite3
+[![Build Status](https://travis-ci.org/dckc/rust-sqlite3.svg?branch=master)](https://travis-ci.org/dckc/rust-sqlite3)
 
 ### TODO
 
