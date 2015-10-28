@@ -23,9 +23,8 @@ pub trait ToSql {
 ///
 /// [column]: http://www.sqlite.org/c3ref/column_blob.html
 ///
-///   - *TODO: consider a `types` submodule*
 ///   - *TODO: many more implementors, including Option<T>*
-pub trait FromSql {
+pub trait FromSql : Sized {
     /// Try to extract a `Self` type value from the `col`th colum of a `ResultRow`.
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<Self>;
 }
