@@ -21,10 +21,10 @@
 //! 
 //! use time::Timespec;
 //! 
-//! 
 //! use sqlite3::{
 //!     DatabaseConnection,
-//!     QueryFold,
+//!     Query,
+//!     ResultRow,
 //!     ResultRowAccess,
 //!     SqliteResult,
 //!     StatementUpdate,
@@ -68,17 +68,14 @@
 //! 
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
 //! 
-//!     let snoc = |x, mut xs: Vec<_>| { xs.push(x); xs };
-//!
-//!     let ppl = try!(stmt.query_fold(
-//!         &[], vec!(), |row, ppl| {
-//!             Ok(snoc(Person {
-//!                 id: row.get("id"),
-//!                 name: row.get("name"),
-//!                 time_created: row.get(2)
-//!             }, ppl))
-//!         }));
-//!     Ok(ppl)
+//!     let to_person = |row: &mut ResultRow| Ok(
+//!         Person {
+//!             id: row.get("id"),
+//!             name: row.get("name"),
+//!             time_created: row.get(2)
+//!         });
+//!     let ppl = try!(stmt.query(&[], to_person));
+//!     ppl.collect()
 //! }
 //! ```
 
@@ -156,28 +153,28 @@ impl StatementUpdate for core::PreparedStatement {
 }
 
 
-/// Mix in `query()` convenience function.
-pub trait Query<F>
+/// Mix in `query_each()` convenience function.
+pub trait QueryEach<F>
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
-    fn query(&mut self,
-             values: &[&ToSql],
-             each_row: &mut F
-             ) -> SqliteResult<()>;
+    fn query_each(&mut self,
+                  values: &[&ToSql],
+                  each_row: &mut F
+                  ) -> SqliteResult<()>;
 }
 
-impl<F> Query<F> for core::PreparedStatement
+impl<F> QueryEach<F> for core::PreparedStatement
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
     ///
     /// For call `each_row(row)` for each resulting step,
     /// exiting on `Err`.
-    fn query(&mut self,
-             values: &[&ToSql],
-             each_row: &mut F
-             ) -> SqliteResult<()>
+    fn query_each(&mut self,
+                  values: &[&ToSql],
+                  each_row: &mut F
+                  ) -> SqliteResult<()>
     {
         try!(bind_values(self, values));
         let mut results = self.execute();
@@ -212,7 +209,7 @@ impl<F, A> QueryFold<F, A> for core::PreparedStatement
     fn query_fold(&mut self,
                   values: &[&ToSql],
                   init: A,
-                  each_row: F
+                  f: F
                   ) -> SqliteResult<A>
     {
         try!(bind_values(self, values));
@@ -221,10 +218,64 @@ impl<F, A> QueryFold<F, A> for core::PreparedStatement
         loop {
             match try!(results.step()) {
                 None => break,
-                Some(ref mut row) => accum = try!(each_row(row, accum)),
+                Some(ref mut row) => accum = try!(f(row, accum)),
             }
         }
         Ok(accum)
+    }
+}
+
+
+/// Mix in `query()` convenience function.
+pub trait Query<F, T>
+    where F: FnMut(&mut ResultRow) -> SqliteResult<T>
+{
+    /// Iterate over query results after binding parameters.
+    ///
+    /// Each of the `values` is bound to the statement (using `to_sql`)
+    /// and the statement is executed.
+    ///
+    /// Returns an iterator over rows transformed by `txform`,
+    /// which computes a value for each row (or an error).
+    fn query<'stmt>(&'stmt mut self,
+                    values: &[&ToSql],
+                    txform: F
+                ) -> SqliteResult<QueryResults<'stmt, T, F>>;
+}
+
+impl<F, T> Query<F, T> for core::PreparedStatement
+    where F: FnMut(&mut ResultRow) -> SqliteResult<T>
+{
+    fn query<'stmt>(&'stmt mut self,
+                    values: &[&ToSql],
+                    txform: F
+                    ) -> SqliteResult<QueryResults<'stmt, T, F>>
+    {
+        try!(bind_values(self, values));
+        let results = self.execute();
+        Ok(QueryResults { results: results, txform: txform })
+    }
+}
+
+/// An iterator over transformed query results
+pub struct QueryResults<'stmt, T, F>
+    where F: FnMut(&mut ResultRow) -> SqliteResult<T>
+{
+    results: core::ResultSet<'stmt>,
+    txform: F
+}
+
+impl<'stmt, T, F> Iterator for QueryResults<'stmt, T, F>
+    where F: FnMut(&mut ResultRow) -> SqliteResult<T>
+{
+    type Item = SqliteResult<T>;
+
+    fn next(&mut self) -> Option<SqliteResult<T>> {
+        match self.results.step() {
+            Ok(None) => None,
+            Ok(Some(ref mut row)) => Some((self.txform)(row)),
+            Err(e) => Some(Err(e))
+        }
     }
 }
 

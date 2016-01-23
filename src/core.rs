@@ -396,6 +396,12 @@ pub type ParamIx = u16;
 
 impl PreparedStatement {
     /// Begin executing a statement.
+    ///
+    /// An sqlite "row" only lasts until the next call to
+    /// `ffi::sqlite3_step()`, so `ResultSet` has a corresponding
+    /// lifetime constraint, which prevents it `ResultSet` from
+    /// implementing the `Iterator` trait. See the `Query` trait
+    /// for and `Iterator` over query results.
     pub fn execute(&mut self) -> ResultSet {
         ResultSet { statement: self }
     }
@@ -543,10 +549,6 @@ impl<'res> Drop for ResultSet<'res> {
 
 impl<'res:'row, 'row> ResultSet<'res> {
     /// Execute the next step of a prepared statement.
-    ///
-    /// An sqlite "row" only lasts until the next call to `ffi::sqlite3_step()`,
-    /// so we need a lifetime constraint. The unfortunate result is that
-    ///  `ResultSet` cannot implement the `Iterator` trait.
     pub fn step(&'row mut self) -> SqliteResult<Option<ResultRow<'res, 'row>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match Step::from_i32(result) {

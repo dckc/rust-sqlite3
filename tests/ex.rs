@@ -6,7 +6,8 @@ use time::Timespec;
 
 use sqlite3::{
     DatabaseConnection,
-    QueryFold,
+    Query,
+    ResultRow,
     ResultRowAccess,
     SqliteResult,
     StatementUpdate,
@@ -50,25 +51,12 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
 
-    let snoc = |x, mut xs: Vec<_>| { xs.push(x); xs };
-
-    let ppl = try!(stmt.query_fold(
-        &[], vec!(), |row, ppl| Ok(
-            snoc(
-                Person {
-                    id: row.get("id"),
-                    name: row.get("name"),
-                    time_created: row.get(2)
-                }, ppl))));
-    Ok(ppl)
-
-/***
-    let ppl = try!(stmt.query_to(
-        &[], |row| Ok(Person {
+    let to_person = |row: &mut ResultRow| Ok(
+        Person {
             id: row.get("id"),
             name: row.get("name"),
             time_created: row.get(2)
-        })));
-    Ok(ppl.collect::<Vec<_>>());
-***/
+        });
+    let ppl = try!(stmt.query(&[], to_person));
+    ppl.collect()
 }
