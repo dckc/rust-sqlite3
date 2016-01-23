@@ -24,7 +24,7 @@
 //! 
 //! use sqlite3::{
 //!     DatabaseConnection,
-//!     Query,
+//!     QueryFold,
 //!     ResultRowAccess,
 //!     SqliteResult,
 //!     StatementUpdate,
@@ -68,15 +68,15 @@
 //! 
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
 //! 
-//!     let mut ppl = vec!();
-//!     try!(stmt.query(
-//!         &[], &mut |row| {
-//!             ppl.push(Person {
+//!     let snoc = |x, mut xs: Vec<_>| { xs.push(x); xs };
+//!
+//!     let ppl = try!(stmt.query_fold(
+//!         &[], vec!(), |row, ppl| {
+//!             Ok(snoc(Person {
 //!                 id: row.get("id"),
 //!                 name: row.get("name"),
 //!                 time_created: row.get(2)
-//!             });
-//!             Ok(())
+//!             }, ppl))
 //!         }));
 //!     Ok(ppl)
 //! }
@@ -190,6 +190,44 @@ impl<F> Query<F> for core::PreparedStatement
         Ok(())
     }
 }
+
+
+/// Mix in `query_fold()` convenience function.
+pub trait QueryFold<F, A>
+    where F: Fn(&mut ResultRow, A) -> SqliteResult<A>
+{
+    /// Fold rows from a query after binding parameters.
+    fn query_fold(&mut self,
+                  values: &[&ToSql],
+                  init: A,
+                  each_row: F
+                  ) -> SqliteResult<A>;
+}
+
+
+impl<F, A> QueryFold<F, A> for core::PreparedStatement
+    where F: Fn(&mut ResultRow, A) -> SqliteResult<A>
+{
+    /// Fold rows from a query after binding parameters.
+    fn query_fold(&mut self,
+                  values: &[&ToSql],
+                  init: A,
+                  each_row: F
+                  ) -> SqliteResult<A>
+    {
+        try!(bind_values(self, values));
+        let mut results = self.execute();
+        let mut accum = init;
+        loop {
+            match try!(results.step()) {
+                None => break,
+                Some(ref mut row) => accum = try!(each_row(row, accum)),
+            }
+        }
+        Ok(accum)
+    }
+}
+
 
 fn bind_values(s: &mut PreparedStatement, values: &[&ToSql]) -> SqliteResult<()> {
     for (ix, v) in values.iter().enumerate() {

@@ -7,7 +7,7 @@ use std::io::Write;
 use sqlite3::{
     Access,
     DatabaseConnection,
-    Query,
+    QueryFold,
     ResultRowAccess,
     SqliteResult,
     StatementUpdate,
@@ -60,7 +60,7 @@ pub fn main() {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Person {
     id: i32,
     name: String,
@@ -81,14 +81,14 @@ fn make_people(conn: &mut DatabaseConnection) -> SqliteResult<Vec<Person>> {
 
     let mut stmt = try!(conn.prepare("SELECT id, name FROM person"));
 
-    let mut ppl = vec!();
-    try!(stmt.query(
-        &[], &mut |row| {
-            ppl.push(Person {
+    let snoc = |x, mut xs: Vec<_>| { xs.push(x); xs };
+
+    let ppl = try!(stmt.query_fold(
+        &[], vec!(), |row, ppl| {
+            Ok(snoc(Person {
                 id: row.get(0),
                 name: row.get(1)
-            });
-            Ok(())
+            }, ppl))
         }));
     Ok(ppl)
 }
