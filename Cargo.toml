@@ -6,7 +6,7 @@ authors = [
   "Dan Connolly <dckc@madmode.com>",
   "Peter Reid <peter.d.reid@gmail.com>"
 ]
-keywords = ["database", "sql"]
+keywords = ["database", "sql", "sqlite"]
 
 exclude = [
     ".hg/*",
