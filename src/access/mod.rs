@@ -49,9 +49,9 @@ pub struct ByFilename<'a> {
 
 impl<'a> Access for ByFilename<'a> {
     fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
-        let c_filename = str_charstar(self.filename).as_ptr();
+        let c_filename = str_charstar(self.filename);
         let flags = self.flags.bits();
-        unsafe { ffi::sqlite3_open_v2(c_filename, db, flags, ptr::null()) }
+        unsafe { ffi::sqlite3_open_v2(c_filename.as_ptr(), db, flags, ptr::null()) }
     }
 }
 
