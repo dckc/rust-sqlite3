@@ -243,8 +243,8 @@ impl DatabaseConnection {
         struct InMemory;
         impl Access for InMemory {
             fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
-                let c_memory = str_charstar(":memory:").as_ptr();
-                unsafe { ffi::sqlite3_open(c_memory, db) }
+                let c_memory = str_charstar(":memory:");
+                unsafe { ffi::sqlite3_open(c_memory.as_ptr(), db) }
             }
         }
         DatabaseConnection::new(InMemory)
@@ -266,12 +266,12 @@ impl DatabaseConnection {
                                     -> SqliteResult<(PreparedStatement, usize)> {
         let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
-        let z_sql = str_charstar(sql).as_ptr();
+        let z_sql = str_charstar(sql);
         let n_byte = sql.len() as c_int;
-        let r = unsafe { ffi::sqlite3_prepare_v2(self.db.handle, z_sql, n_byte, &mut stmt, &mut tail) };
+        let r = unsafe { ffi::sqlite3_prepare_v2(self.db.handle, z_sql.as_ptr(), n_byte, &mut stmt, &mut tail) };
         match decode_result(r, "sqlite3_prepare_v2", maybe(self.detailed, self.db.handle)) {
             Ok(()) => {
-                let offset = tail as usize - z_sql as usize;
+                let offset = tail as usize - z_sql.as_ptr() as usize;
                 Ok((PreparedStatement { stmt: stmt , db: self.db.clone(), detailed: self.detailed }, offset))
             },
             Err(code) => Err(code)
