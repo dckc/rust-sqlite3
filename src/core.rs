@@ -467,9 +467,9 @@ impl PreparedStatement {
         let ix = i as c_int;
         // SQLITE_TRANSIENT => SQLite makes a copy
         let transient = unsafe { mem::transmute(-1 as isize) };
-        let c_value = str_charstar(value).as_ptr();
+        let c_value = str_charstar(value);
         let len = value.len() as c_int;
-        let r = unsafe { ffi::sqlite3_bind_text(self.stmt, ix, c_value, len, transient) };
+        let r = unsafe { ffi::sqlite3_bind_text(self.stmt, ix, c_value.as_ptr(), len, transient) };
         decode_result(r, "sqlite3_bind_text", self.detail_db())
     }
 
