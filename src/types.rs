@@ -132,7 +132,7 @@ impl From<time::ParseError> for SqliteError {
         SqliteError {
             kind: SqliteErrorCode::SQLITE_MISMATCH,
             desc: "Time did not match expected format",
-            detail: Some(format!("Time parsing error: {}", err)),
+            detail: Some(format!("{}", err)),
         }
     }
 }

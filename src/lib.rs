@@ -306,7 +306,9 @@ impl<'res, 'row> ResultRowAccess for core::ResultRow<'res, 'row> {
     fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
-            Err(err) => panic!("retrieving column {}: {}", idx, err)
+            Err(err) => panic!(
+                "the column '{}' was not found in the result row ({})",
+                idx, err)
         }
     }
 
@@ -411,8 +413,10 @@ pub struct SqliteError {
 impl Display for SqliteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.detail {
-            Some(ref x) => f.write_fmt(format_args!("{} ({})", x, self.kind as u32)),
-            None => f.write_fmt(format_args!("{} ({})", self.desc, self.kind as u32))
+            Some(ref x) => f.write_fmt(format_args!(
+                "{} [{}] (code: {})", self.desc, x, self.kind as u32)),
+            None => f.write_fmt(format_args!(
+                "{} (code: {})", self.desc, self.kind as u32))
         }
     }
 }
