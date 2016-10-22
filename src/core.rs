@@ -182,7 +182,7 @@ pub trait Access {
     /// Whether or not an error occurs, allocate a handle and update
     /// db to point to it.  return `SQLITE_OK as c_int` or set the
     /// `errmsg` of the db handle and return a relevant result code.
-    fn open(self, db: *mut *mut ffi::sqlite3) -> c_int;
+    unsafe fn open(self, db: *mut *mut ffi::sqlite3) -> c_int;
 }
 
 
@@ -208,7 +208,7 @@ impl DatabaseConnection {
     /// Note `SqliteError` code is accompanied by (copy) of `sqlite3_errmsg()`.
     pub fn new<A: Access>(access: A) -> SqliteResult<DatabaseConnection> {
         let mut db = ptr::null_mut();
-        let result = access.open(&mut db);
+        let result = unsafe { access.open(&mut db) };
         match decode_result(result, "sqlite3_open_v2", Some(db)) {
             Ok(()) => Ok(DatabaseConnection {
                 db: Rc::new(Database { handle: db}),
@@ -238,9 +238,9 @@ impl DatabaseConnection {
     pub fn in_memory() -> SqliteResult<DatabaseConnection> {
         struct InMemory;
         impl Access for InMemory {
-            fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
+            unsafe fn open(self, db: *mut *mut ffi::sqlite3) -> c_int {
                 let c_memory = str_charstar(":memory:");
-                unsafe { ffi::sqlite3_open(c_memory.as_ptr(), db) }
+                ffi::sqlite3_open(c_memory.as_ptr(), db)
             }
         }
         DatabaseConnection::new(InMemory)
