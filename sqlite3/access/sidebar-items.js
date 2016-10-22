@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["open","Open a database by filename."]],"mod":[["flags",""]],"struct":[["ByFilename","Access to a database by filename"]]});

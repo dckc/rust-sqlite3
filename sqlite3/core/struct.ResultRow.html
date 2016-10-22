@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `ResultRow` struct in crate `sqlite3`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, ResultRow">
+
+    <title>sqlite3::core::ResultRow - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a></p><script>window.sidebarCurrent = {name: 'ResultRow', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a>::<wbr><a class='struct' href=''>ResultRow</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-283' class='srclink' href='../../src/sqlite3/src/core.rs.html#571-573' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct ResultRow&lt;'res: 'row,&nbsp;'row&gt; {
+    // some fields omitted
+}</pre><div class='docblock'><p>Access to columns of a row.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl&lt;'res,&nbsp;'row&gt; <a class='struct' href='../../sqlite3/core/struct.ResultRow.html' title='sqlite3::core::ResultRow'>ResultRow</a>&lt;'res,&nbsp;'row&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-288' class='srclink' href='../../src/sqlite3/src/core.rs.html#587-672' title='goto source code'>[src]</a></span></h3>
+<div class='docblock'><p>Access to one row (step) of a result.</p>
+
+<p>Note &quot;These routines attempt to convert the value where appropriate.&quot;<a href="http://www.sqlite.org/c3ref/column_blob.html">1</a>
+and &quot;The value returned by <code>sqlite3_column_type()</code> is only
+meaningful if no type conversions have occurred as described
+below. After a type conversion, the value returned by
+<code>sqlite3_column_type()</code> is undefined.&quot;<a href="http://www.sqlite.org/c3ref/column_blob.html">1</a></p>
+</div><div class='impl-items'><h4 id='method.column_count' class='method'><code>fn <a href='#method.column_count' class='fnname'>column_count</a>(&amp;self) -&gt; <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a></code></h4>
+<div class='docblock'><p>cf <code>sqlite3_column_count</code></p>
+
+<p><em>TODO: consider returning Option<uint>
+&quot;This routine returns 0 if pStmt is an SQL statement that does
+not return data (for example an UPDATE).&quot;</em></p>
+</div><h4 id='method.with_column_name' class='method'><code>fn <a href='#method.with_column_name' class='fnname'>with_column_name</a>&lt;T,&nbsp;F:&nbsp;<a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Fn.html' title='core::ops::Fn'>Fn</a>(&amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; T&gt;(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>, default: T, f: F) -&gt; T</code></h4>
+<div class='docblock'><p>Look up a column name and compute some function of it.</p>
+
+<p>Return <code>default</code> if there is no column <code>i</code></p>
+
+<p>cf <code>sqlite_column_name</code></p>
+</div><h4 id='method.column_type' class='method'><code>fn <a href='#method.column_type' class='fnname'>column_type</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='enum' href='../../sqlite3/enum.ColumnType.html' title='sqlite3::ColumnType'>ColumnType</a></code></h4>
+<div class='docblock'><p>Look up the type of a column.</p>
+
+<p>Return <code>SQLITE_NULL</code> if there is no such <code>col</code>.</p>
+</div><h4 id='method.column_int' class='method'><code>fn <a href='#method.column_int' class='fnname'>column_int</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a></code></h4>
+<div class='docblock'><p>Get <code>int</code> value of a column.</p>
+</div><h4 id='method.column_int64' class='method'><code>fn <a href='#method.column_int64' class='fnname'>column_int64</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a></code></h4>
+<div class='docblock'><p>Get <code>int64</code> value of a column.</p>
+</div><h4 id='method.column_double' class='method'><code>fn <a href='#method.column_double' class='fnname'>column_double</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a></code></h4>
+<div class='docblock'><p>Get <code>f64</code> (aka double) value of a column.</p>
+</div><h4 id='method.column_text' class='method'><code>fn <a href='#method.column_text' class='fnname'>column_text</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a>&gt;</code></h4>
+<div class='docblock'><p>Get <code>Option&lt;String&gt;</code> (aka text) value of a column.</p>
+</div><h4 id='method.column_str' class='method'><code>fn <a href='#method.column_str' class='fnname'>column_str</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;&amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>&gt;</code></h4>
+<div class='docblock'><p>Get <code>Option&lt;&amp;str&gt;</code> (aka text) value of a column.</p>
+</div><h4 id='method.column_blob' class='method'><code>fn <a href='#method.column_blob' class='fnname'>column_blob</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='struct' href='https://doc.rust-lang.org/nightly/collections/vec/struct.Vec.html' title='collections::vec::Vec'>Vec</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a>&gt;&gt;</code></h4>
+<div class='docblock'><p>Get <code>Option&lt;Vec&lt;u8&gt;&gt;</code> (aka blob) value of a column.</p>
+</div><h4 id='method.column_slice' class='method'><code>fn <a href='#method.column_slice' class='fnname'>column_slice</a>(&amp;self, col: <a class='type' href='../../sqlite3/core/type.ColIx.html' title='sqlite3::core::ColIx'>ColIx</a>) -&gt; <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>&gt;</code></h4>
+<div class='docblock'><p>Get <code>Option&lt;&amp;[u8]&gt;</code> (aka blob) value of a column.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl&lt;'res,&nbsp;'row&gt; <a class='trait' href='../../sqlite3/trait.ResultRowAccess.html' title='sqlite3::ResultRowAccess'>ResultRowAccess</a> for <a class='struct' href='../../sqlite3/core/struct.ResultRow.html' title='sqlite3::core::ResultRow'>ResultRow</a>&lt;'res,&nbsp;'row&gt;</code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1901' class='srclink' href='../../src/sqlite3/src/lib.rs.html#292-316' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.get' class='method'><code>fn <a href='../../sqlite3/trait.ResultRowAccess.html#tymethod.get' class='fnname'>get</a>&lt;I:&nbsp;<a class='trait' href='../../sqlite3/trait.RowIndex.html' title='sqlite3::RowIndex'>RowIndex</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html' title='core::fmt::Display'>Display</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a>,&nbsp;T:&nbsp;<a class='trait' href='../../sqlite3/types/trait.FromSql.html' title='sqlite3::types::FromSql'>FromSql</a>&gt;(&amp;mut self, idx: I) -&gt; T</code></h4>
+<div class='docblock'><p>Get <code>T</code> type result value from <code>idx</code>th column of a row. <a href="../../sqlite3/trait.ResultRowAccess.html#tymethod.get">Read more</a></p>
+</div><h4 id='method.get_opt' class='method'><code>fn <a href='../../sqlite3/trait.ResultRowAccess.html#tymethod.get_opt' class='fnname'>get_opt</a>&lt;I:&nbsp;<a class='trait' href='../../sqlite3/trait.RowIndex.html' title='sqlite3::RowIndex'>RowIndex</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/fmt/trait.Display.html' title='core::fmt::Display'>Display</a> + <a class='trait' href='https://doc.rust-lang.org/nightly/core/clone/trait.Clone.html' title='core::clone::Clone'>Clone</a>,&nbsp;T:&nbsp;<a class='trait' href='../../sqlite3/types/trait.FromSql.html' title='sqlite3::types::FromSql'>FromSql</a>&gt;(&amp;mut self, idx: I) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;T&gt;</code></h4>
+<div class='docblock'><p>Try to get <code>T</code> type result value from <code>idx</code>th column of a row.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

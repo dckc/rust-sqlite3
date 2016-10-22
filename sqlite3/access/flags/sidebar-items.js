@@ -1,0 +1,1 @@
+initSidebarItems({"constant":[["OPEN_CREATE",""],["OPEN_FULLMUTEX",""],["OPEN_MEMORY",""],["OPEN_NOMUTEX",""],["OPEN_PRIVATECACHE",""],["OPEN_READONLY",""],["OPEN_READWRITE",""],["OPEN_SHAREDCACHE",""],["OPEN_URI",""]],"struct":[["OpenFlags",""]]});

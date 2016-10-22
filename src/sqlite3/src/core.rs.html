@@ -1,0 +1,1790 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="Source to the Rust file `src/core.rs`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang">
+
+    <title>core.rs.html -- source</title>
+
+    <link rel="stylesheet" type="text/css" href="../../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content source"><pre class="line-numbers"><span id="1">  1</span>
+<span id="2">  2</span>
+<span id="3">  3</span>
+<span id="4">  4</span>
+<span id="5">  5</span>
+<span id="6">  6</span>
+<span id="7">  7</span>
+<span id="8">  8</span>
+<span id="9">  9</span>
+<span id="10"> 10</span>
+<span id="11"> 11</span>
+<span id="12"> 12</span>
+<span id="13"> 13</span>
+<span id="14"> 14</span>
+<span id="15"> 15</span>
+<span id="16"> 16</span>
+<span id="17"> 17</span>
+<span id="18"> 18</span>
+<span id="19"> 19</span>
+<span id="20"> 20</span>
+<span id="21"> 21</span>
+<span id="22"> 22</span>
+<span id="23"> 23</span>
+<span id="24"> 24</span>
+<span id="25"> 25</span>
+<span id="26"> 26</span>
+<span id="27"> 27</span>
+<span id="28"> 28</span>
+<span id="29"> 29</span>
+<span id="30"> 30</span>
+<span id="31"> 31</span>
+<span id="32"> 32</span>
+<span id="33"> 33</span>
+<span id="34"> 34</span>
+<span id="35"> 35</span>
+<span id="36"> 36</span>
+<span id="37"> 37</span>
+<span id="38"> 38</span>
+<span id="39"> 39</span>
+<span id="40"> 40</span>
+<span id="41"> 41</span>
+<span id="42"> 42</span>
+<span id="43"> 43</span>
+<span id="44"> 44</span>
+<span id="45"> 45</span>
+<span id="46"> 46</span>
+<span id="47"> 47</span>
+<span id="48"> 48</span>
+<span id="49"> 49</span>
+<span id="50"> 50</span>
+<span id="51"> 51</span>
+<span id="52"> 52</span>
+<span id="53"> 53</span>
+<span id="54"> 54</span>
+<span id="55"> 55</span>
+<span id="56"> 56</span>
+<span id="57"> 57</span>
+<span id="58"> 58</span>
+<span id="59"> 59</span>
+<span id="60"> 60</span>
+<span id="61"> 61</span>
+<span id="62"> 62</span>
+<span id="63"> 63</span>
+<span id="64"> 64</span>
+<span id="65"> 65</span>
+<span id="66"> 66</span>
+<span id="67"> 67</span>
+<span id="68"> 68</span>
+<span id="69"> 69</span>
+<span id="70"> 70</span>
+<span id="71"> 71</span>
+<span id="72"> 72</span>
+<span id="73"> 73</span>
+<span id="74"> 74</span>
+<span id="75"> 75</span>
+<span id="76"> 76</span>
+<span id="77"> 77</span>
+<span id="78"> 78</span>
+<span id="79"> 79</span>
+<span id="80"> 80</span>
+<span id="81"> 81</span>
+<span id="82"> 82</span>
+<span id="83"> 83</span>
+<span id="84"> 84</span>
+<span id="85"> 85</span>
+<span id="86"> 86</span>
+<span id="87"> 87</span>
+<span id="88"> 88</span>
+<span id="89"> 89</span>
+<span id="90"> 90</span>
+<span id="91"> 91</span>
+<span id="92"> 92</span>
+<span id="93"> 93</span>
+<span id="94"> 94</span>
+<span id="95"> 95</span>
+<span id="96"> 96</span>
+<span id="97"> 97</span>
+<span id="98"> 98</span>
+<span id="99"> 99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
+<span id="107">107</span>
+<span id="108">108</span>
+<span id="109">109</span>
+<span id="110">110</span>
+<span id="111">111</span>
+<span id="112">112</span>
+<span id="113">113</span>
+<span id="114">114</span>
+<span id="115">115</span>
+<span id="116">116</span>
+<span id="117">117</span>
+<span id="118">118</span>
+<span id="119">119</span>
+<span id="120">120</span>
+<span id="121">121</span>
+<span id="122">122</span>
+<span id="123">123</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
+<span id="137">137</span>
+<span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+<span id="351">351</span>
+<span id="352">352</span>
+<span id="353">353</span>
+<span id="354">354</span>
+<span id="355">355</span>
+<span id="356">356</span>
+<span id="357">357</span>
+<span id="358">358</span>
+<span id="359">359</span>
+<span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+<span id="404">404</span>
+<span id="405">405</span>
+<span id="406">406</span>
+<span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
+<span id="621">621</span>
+<span id="622">622</span>
+<span id="623">623</span>
+<span id="624">624</span>
+<span id="625">625</span>
+<span id="626">626</span>
+<span id="627">627</span>
+<span id="628">628</span>
+<span id="629">629</span>
+<span id="630">630</span>
+<span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
+<span id="640">640</span>
+<span id="641">641</span>
+<span id="642">642</span>
+<span id="643">643</span>
+<span id="644">644</span>
+<span id="645">645</span>
+<span id="646">646</span>
+<span id="647">647</span>
+<span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
+<span id="652">652</span>
+<span id="653">653</span>
+<span id="654">654</span>
+<span id="655">655</span>
+<span id="656">656</span>
+<span id="657">657</span>
+<span id="658">658</span>
+<span id="659">659</span>
+<span id="660">660</span>
+<span id="661">661</span>
+<span id="662">662</span>
+<span id="663">663</span>
+<span id="664">664</span>
+<span id="665">665</span>
+<span id="666">666</span>
+<span id="667">667</span>
+<span id="668">668</span>
+<span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
+<span id="673">673</span>
+<span id="674">674</span>
+<span id="675">675</span>
+<span id="676">676</span>
+<span id="677">677</span>
+<span id="678">678</span>
+<span id="679">679</span>
+<span id="680">680</span>
+<span id="681">681</span>
+<span id="682">682</span>
+<span id="683">683</span>
+<span id="684">684</span>
+<span id="685">685</span>
+<span id="686">686</span>
+<span id="687">687</span>
+<span id="688">688</span>
+<span id="689">689</span>
+<span id="690">690</span>
+<span id="691">691</span>
+<span id="692">692</span>
+<span id="693">693</span>
+<span id="694">694</span>
+<span id="695">695</span>
+<span id="696">696</span>
+<span id="697">697</span>
+<span id="698">698</span>
+<span id="699">699</span>
+<span id="700">700</span>
+<span id="701">701</span>
+<span id="702">702</span>
+<span id="703">703</span>
+<span id="704">704</span>
+<span id="705">705</span>
+<span id="706">706</span>
+<span id="707">707</span>
+<span id="708">708</span>
+<span id="709">709</span>
+<span id="710">710</span>
+<span id="711">711</span>
+<span id="712">712</span>
+<span id="713">713</span>
+<span id="714">714</span>
+<span id="715">715</span>
+<span id="716">716</span>
+<span id="717">717</span>
+<span id="718">718</span>
+<span id="719">719</span>
+<span id="720">720</span>
+<span id="721">721</span>
+<span id="722">722</span>
+<span id="723">723</span>
+<span id="724">724</span>
+<span id="725">725</span>
+<span id="726">726</span>
+<span id="727">727</span>
+<span id="728">728</span>
+<span id="729">729</span>
+<span id="730">730</span>
+<span id="731">731</span>
+<span id="732">732</span>
+<span id="733">733</span>
+<span id="734">734</span>
+<span id="735">735</span>
+<span id="736">736</span>
+<span id="737">737</span>
+<span id="738">738</span>
+<span id="739">739</span>
+<span id="740">740</span>
+<span id="741">741</span>
+<span id="742">742</span>
+<span id="743">743</span>
+<span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
+<span id="754">754</span>
+<span id="755">755</span>
+<span id="756">756</span>
+<span id="757">757</span>
+<span id="758">758</span>
+<span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
+<span id="764">764</span>
+<span id="765">765</span>
+<span id="766">766</span>
+<span id="767">767</span>
+<span id="768">768</span>
+<span id="769">769</span>
+<span id="770">770</span>
+<span id="771">771</span>
+<span id="772">772</span>
+<span id="773">773</span>
+<span id="774">774</span>
+<span id="775">775</span>
+<span id="776">776</span>
+<span id="777">777</span>
+<span id="778">778</span>
+<span id="779">779</span>
+<span id="780">780</span>
+<span id="781">781</span>
+<span id="782">782</span>
+<span id="783">783</span>
+<span id="784">784</span>
+<span id="785">785</span>
+<span id="786">786</span>
+<span id="787">787</span>
+<span id="788">788</span>
+<span id="789">789</span>
+<span id="790">790</span>
+<span id="791">791</span>
+<span id="792">792</span>
+<span id="793">793</span>
+<span id="794">794</span>
+<span id="795">795</span>
+<span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
+<span id="800">800</span>
+<span id="801">801</span>
+<span id="802">802</span>
+<span id="803">803</span>
+<span id="804">804</span>
+<span id="805">805</span>
+<span id="806">806</span>
+<span id="807">807</span>
+<span id="808">808</span>
+<span id="809">809</span>
+<span id="810">810</span>
+<span id="811">811</span>
+<span id="812">812</span>
+<span id="813">813</span>
+<span id="814">814</span>
+<span id="815">815</span>
+<span id="816">816</span>
+<span id="817">817</span>
+<span id="818">818</span>
+<span id="819">819</span>
+<span id="820">820</span>
+<span id="821">821</span>
+<span id="822">822</span>
+<span id="823">823</span>
+<span id="824">824</span>
+<span id="825">825</span>
+<span id="826">826</span>
+<span id="827">827</span>
+<span id="828">828</span>
+<span id="829">829</span>
+<span id="830">830</span>
+<span id="831">831</span>
+<span id="832">832</span>
+<span id="833">833</span>
+<span id="834">834</span>
+<span id="835">835</span>
+<span id="836">836</span>
+<span id="837">837</span>
+<span id="838">838</span>
+<span id="839">839</span>
+<span id="840">840</span>
+</pre><pre class='rust '>
+<span class='doccomment'>//! A minimal safe interface to sqlite3&#39;s basic API.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! The basic sqlite3 API is discussed in the [sqlite intro][intro].</span>
+<span class='doccomment'>//! To go beyond that, use the (unsafe) `ffi` module directly.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! [intro]: http://www.sqlite.org/cintro.html</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! ```rust</span>
+<span class='doccomment'>//! extern crate sqlite3;</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! use sqlite3::{</span>
+<span class='doccomment'>//!     DatabaseConnection,</span>
+<span class='doccomment'>//!     SqliteResult,</span>
+<span class='doccomment'>//! };</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! fn convenience_exec() -&gt; SqliteResult&lt;DatabaseConnection&gt; {</span>
+<span class='doccomment'>//!     let mut conn = try!(DatabaseConnection::in_memory());</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!     try!(conn.exec(&quot;</span>
+<span class='doccomment'>//!        create table items (</span>
+<span class='doccomment'>//!                    id integer,</span>
+<span class='doccomment'>//!                    description varchar(40),</span>
+<span class='doccomment'>//!                    price integer</span>
+<span class='doccomment'>//!                    )&quot;));</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!     Ok(conn)</span>
+<span class='doccomment'>//! }</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! fn typical_usage(conn: &amp;mut DatabaseConnection) -&gt; SqliteResult&lt;String&gt; {</span>
+<span class='doccomment'>//!     {</span>
+<span class='doccomment'>//!         let mut stmt = try!(conn.prepare(</span>
+<span class='doccomment'>//!             &quot;insert into items (id, description, price)</span>
+<span class='doccomment'>//!            values (1, &#39;stuff&#39;, 10)&quot;));</span>
+<span class='doccomment'>//!         let mut results = stmt.execute();</span>
+<span class='doccomment'>//!         match try!(results.step()) {</span>
+<span class='doccomment'>//!             None =&gt; (),</span>
+<span class='doccomment'>//!             Some(_) =&gt; panic!(&quot;row from insert?!&quot;)</span>
+<span class='doccomment'>//!         };</span>
+<span class='doccomment'>//!     }</span>
+<span class='doccomment'>//!     assert_eq!(conn.changes(), 1);</span>
+<span class='doccomment'>//!     assert_eq!(conn.last_insert_rowid(), 1);</span>
+<span class='doccomment'>//!     {</span>
+<span class='doccomment'>//!         let mut stmt = try!(conn.prepare(</span>
+<span class='doccomment'>//!             &quot;select * from items&quot;));</span>
+<span class='doccomment'>//!         let mut results = stmt.execute();</span>
+<span class='doccomment'>//!         match results.step() {</span>
+<span class='doccomment'>//!             Ok(Some(ref mut row1)) =&gt; {</span>
+<span class='doccomment'>//!                 let id = row1.column_int(0);</span>
+<span class='doccomment'>//!                 let desc_opt = row1.column_text(1).expect(&quot;desc_opt should be non-null&quot;);</span>
+<span class='doccomment'>//!                 let price = row1.column_int(2);</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!                 assert_eq!(id, 1);</span>
+<span class='doccomment'>//!                 assert_eq!(desc_opt, format!(&quot;stuff&quot;));</span>
+<span class='doccomment'>//!                 assert_eq!(price, 10);</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!                 Ok(format!(&quot;row: {}, {}, {}&quot;, id, desc_opt, price))</span>
+<span class='doccomment'>//!             },</span>
+<span class='doccomment'>//!             Err(oops) =&gt; panic!(oops),</span>
+<span class='doccomment'>//!             Ok(None) =&gt; panic!(&quot;where did our row go?&quot;)</span>
+<span class='doccomment'>//!         }</span>
+<span class='doccomment'>//!     }</span>
+<span class='doccomment'>//! }</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! pub fn main() {</span>
+<span class='doccomment'>//!     match convenience_exec() {</span>
+<span class='doccomment'>//!         Ok(ref mut db) =&gt; {</span>
+<span class='doccomment'>//!             match typical_usage(db) {</span>
+<span class='doccomment'>//!                 Ok(txt) =&gt; println!(&quot;item: {}&quot;, txt),</span>
+<span class='doccomment'>//!                 Err(oops) =&gt; {</span>
+<span class='doccomment'>//!                     panic!(&quot;error: {:?} msg: {}&quot;, oops,</span>
+<span class='doccomment'>//!                            db.errmsg())</span>
+<span class='doccomment'>//!                 }</span>
+<span class='doccomment'>//!             }</span>
+<span class='doccomment'>//!         },</span>
+<span class='doccomment'>//!         Err(oops) =&gt; panic!(oops)</span>
+<span class='doccomment'>//!     }</span>
+<span class='doccomment'>//! }</span>
+<span class='doccomment'>//! ```</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! The `DatabaseConnection` and `PreparedStatment` structures are</span>
+<span class='doccomment'>//! memory-safe versions of the sqlite3 connection and prepared</span>
+<span class='doccomment'>//! statement structures. A `PreparedStatement` maintains mutable,</span>
+<span class='doccomment'>//! and hence exclusive, reference to the database connection.</span>
+<span class='doccomment'>//! Note the use of blocks avoid borrowing the connection more</span>
+<span class='doccomment'>//! than once at a time.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//! In addition:</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!   - `ResultSet` represents, as a rust lifetime, all of the steps</span>
+<span class='doccomment'>//!     of one execution of a statement. (*Ideally, it would be an</span>
+<span class='doccomment'>//!     Iterator over `ResultRow`s, but the `Iterator::next()`</span>
+<span class='doccomment'>//!     function has no lifetime parameter.*) Use of mutable</span>
+<span class='doccomment'>//!     references ensures that its lifetime is subsumed by the</span>
+<span class='doccomment'>//!     statement lifetime.  Its destructor resets the statement.</span>
+<span class='doccomment'>//!</span>
+<span class='doccomment'>//!   - `ResultRow` is a lifetime for access to the columns of one row.</span>
+<span class='doccomment'>//!</span>
+
+<span class='kw'>use</span> <span class='ident'>enum_primitive</span>::<span class='ident'>FromPrimitive</span>;
+<span class='kw'>use</span> <span class='ident'>libc</span>::{<span class='ident'>c_int</span>, <span class='ident'>c_char</span>};
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ffi</span> <span class='kw'>as</span> <span class='ident'>std_ffi</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>mem</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ptr</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>slice</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ffi</span>::<span class='ident'>CStr</span>;
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>rc</span>::<span class='ident'>Rc</span>;
+<span class='kw'>use</span> <span class='ident'>time</span>::<span class='ident'>Duration</span>;
+
+<span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>SqliteOk</span>::<span class='ident'>SQLITE_OK</span>;
+<span class='kw'>use</span> <span class='self'>self</span>::<span class='ident'>Step</span>::{<span class='ident'>SQLITE_ROW</span>, <span class='ident'>SQLITE_DONE</span>};
+
+<span class='kw'>pub</span> <span class='kw'>use</span> <span class='kw'>super</span>::{<span class='ident'>SqliteError</span>, <span class='ident'>SqliteErrorCode</span>, <span class='ident'>SqliteResult</span>};
+
+<span class='kw'>pub</span> <span class='kw'>use</span> <span class='kw'>super</span>::<span class='ident'>ColumnType</span>;
+<span class='kw'>pub</span> <span class='kw'>use</span> <span class='kw'>super</span>::<span class='ident'>ColumnType</span>::<span class='ident'>SQLITE_NULL</span>;
+
+<span class='kw'>use</span> <span class='ident'>ffi</span>; <span class='comment'>// TODO: move to sqlite3-sys crate</span>
+
+
+<span class='doccomment'>/// Successful result</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// Use `SQLITE_OK as c_int` to decode return values from mod ffi.</span>
+<span class='doccomment'>/// See SqliteResult, SqliteError for typical return code handling.</span>
+<span class='macro'>enum_from_primitive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>, <span class='ident'>PartialEq</span>, <span class='ident'>Eq</span>, <span class='ident'>Copy</span>, <span class='ident'>Clone</span>)]</span>
+    <span class='attribute'>#[<span class='ident'>allow</span>(<span class='ident'>non_camel_case_types</span>)]</span>
+    <span class='attribute'>#[<span class='ident'>allow</span>(<span class='ident'>missing_docs</span>)]</span>
+    <span class='kw'>pub</span> <span class='kw'>enum</span> <span class='ident'>SqliteOk</span> {
+        <span class='ident'>SQLITE_OK</span> <span class='op'>=</span> <span class='number'>0</span>
+    }
+}
+
+<span class='macro'>enum_from_primitive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>, <span class='ident'>PartialEq</span>, <span class='ident'>Eq</span>)]</span>
+    <span class='attribute'>#[<span class='ident'>allow</span>(<span class='ident'>non_camel_case_types</span>)]</span>
+    <span class='comment'>// TODO: use, test this</span>
+    <span class='kw'>enum</span> <span class='ident'>SqliteLogLevel</span> {
+        <span class='ident'>SQLITE_NOTICE</span>    <span class='op'>=</span> <span class='number'>27</span>,
+        <span class='ident'>SQLITE_WARNING</span>   <span class='op'>=</span> <span class='number'>28</span>,
+    }
+}
+
+<span class='kw'>struct</span> <span class='ident'>Database</span> {
+    <span class='comment'>// not pub so that nothing outside this module</span>
+    <span class='comment'>// interferes with the lifetime</span>
+    <span class='ident'>handle</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span>,
+}
+<span class='kw'>impl</span> <span class='ident'>Drop</span> <span class='kw'>for</span> <span class='ident'>Database</span> {
+    <span class='doccomment'>/// Release resources associated with connection.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// # Failure</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Fails if &quot;the database connection is associated with</span>
+    <span class='doccomment'>/// unfinalized prepared statements or unfinished sqlite3_backup</span>
+    <span class='doccomment'>/// objects&quot;[1] which the Rust memory model ensures is impossible</span>
+    <span class='doccomment'>/// (barring bugs in the use of unsafe blocks in the implementation</span>
+    <span class='doccomment'>/// of this library).</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// [1]: http://www.sqlite.org/c3ref/close.html</span>
+    <span class='kw'>fn</span> <span class='ident'>drop</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='comment'>// sqlite3_close_v2 is for gced languages.</span>
+        <span class='kw'>let</span> <span class='ident'>ok</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_close</span>(<span class='self'>self</span>.<span class='ident'>handle</span>) };
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>ok</span>, <span class='ident'>SQLITE_OK</span> <span class='kw'>as</span> <span class='ident'>c_int</span>);
+    }
+}
+
+<span class='doccomment'>/// A connection to a sqlite3 database.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>DatabaseConnection</span> {
+    <span class='ident'>db</span>: <span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Database</span><span class='op'>&gt;</span>,
+
+    <span class='comment'>// whether to copy errmsg() to error detail</span>
+    <span class='ident'>detailed</span>: <span class='ident'>bool</span>,
+}
+
+
+
+<span class='doccomment'>/// Authorization to connect to database.</span>
+<span class='kw'>pub</span> <span class='kw'>trait</span> <span class='ident'>Access</span> {
+    <span class='doccomment'>/// Open a database connection.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Whether or not an error occurs, allocate a handle and update</span>
+    <span class='doccomment'>/// db to point to it.  return `SQLITE_OK as c_int` or set the</span>
+    <span class='doccomment'>/// `errmsg` of the db handle and return a relevant result code.</span>
+    <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>open</span>(<span class='self'>self</span>, <span class='ident'>db</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span>) <span class='op'>-&gt;</span> <span class='ident'>c_int</span>;
+}
+
+
+<span class='comment'>// why isn&#39;t this in std::option?</span>
+<span class='kw'>fn</span> <span class='ident'>maybe</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>(<span class='ident'>choice</span>: <span class='ident'>bool</span>, <span class='ident'>x</span>: <span class='ident'>T</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span> {
+    <span class='kw'>if</span> <span class='ident'>choice</span> { <span class='prelude-val'>Some</span>(<span class='ident'>x</span>) } <span class='kw'>else</span> { <span class='prelude-val'>None</span> }
+}
+
+<span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>ffi</span>::<span class='ident'>NulError</span>;
+<span class='kw'>impl</span> <span class='ident'>From</span><span class='op'>&lt;</span><span class='ident'>NulError</span><span class='op'>&gt;</span> <span class='kw'>for</span> <span class='ident'>SqliteError</span> {
+    <span class='kw'>fn</span> <span class='ident'>from</span>(_: <span class='ident'>NulError</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteError</span> {
+        <span class='ident'>SqliteError</span> {
+            <span class='ident'>kind</span>: <span class='ident'>SqliteErrorCode</span>::<span class='ident'>SQLITE_MISUSE</span>,
+            <span class='ident'>desc</span>: <span class='string'>&quot;Sql string contained an internal 0 byte&quot;</span>,
+            <span class='ident'>detail</span>: <span class='prelude-val'>None</span>,
+        }
+    }
+}
+
+<span class='kw'>impl</span> <span class='ident'>DatabaseConnection</span> {
+    <span class='doccomment'>/// Given explicit access to a database, attempt to connect to it.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Note `SqliteError` code is accompanied by (copy) of `sqlite3_errmsg()`.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>new</span><span class='op'>&lt;</span><span class='ident'>A</span>: <span class='ident'>Access</span><span class='op'>&gt;</span>(<span class='ident'>access</span>: <span class='ident'>A</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span><span class='ident'>DatabaseConnection</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='ident'>ptr</span>::<span class='ident'>null_mut</span>();
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>access</span>.<span class='ident'>open</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>db</span>) };
+        <span class='kw'>match</span> <span class='ident'>decode_result</span>(<span class='ident'>result</span>, <span class='string'>&quot;sqlite3_open_v2&quot;</span>, <span class='prelude-val'>Some</span>(<span class='ident'>db</span>)) {
+            <span class='prelude-val'>Ok</span>(()) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>DatabaseConnection</span> {
+                <span class='ident'>db</span>: <span class='ident'>Rc</span>::<span class='ident'>new</span>(<span class='ident'>Database</span> { <span class='ident'>handle</span>: <span class='ident'>db</span>}),
+                <span class='ident'>detailed</span>: <span class='bool-val'>true</span>,
+            }),
+            <span class='prelude-val'>Err</span>(<span class='ident'>err</span>) <span class='op'>=&gt;</span> {
+                <span class='comment'>// &quot;Whether or not an error occurs when it is opened,</span>
+                <span class='comment'>// resources associated with the database connection</span>
+                <span class='comment'>// handle should be released by passing it to</span>
+                <span class='comment'>// sqlite3_close() when it is no longer required.&quot;</span>
+                <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_close</span>(<span class='ident'>db</span>) };
+
+                <span class='prelude-val'>Err</span>(<span class='ident'>err</span>)
+            }
+        }
+    }
+
+    <span class='doccomment'>/// Opt out of copies of error message details.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>ignore_detail</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='self'>self</span>.<span class='ident'>detailed</span> <span class='op'>=</span> <span class='bool-val'>false</span>;
+    }
+
+
+    <span class='doccomment'>/// Create connection to an in-memory database.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>///  - TODO: integrate sqlite3_errmsg()</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>in_memory</span>() <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span><span class='ident'>DatabaseConnection</span><span class='op'>&gt;</span> {
+        <span class='kw'>struct</span> <span class='ident'>InMemory</span>;
+        <span class='kw'>impl</span> <span class='ident'>Access</span> <span class='kw'>for</span> <span class='ident'>InMemory</span> {
+            <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>open</span>(<span class='self'>self</span>, <span class='ident'>db</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span>) <span class='op'>-&gt;</span> <span class='ident'>c_int</span> {
+                <span class='kw'>let</span> <span class='ident'>c_memory</span> <span class='op'>=</span> <span class='ident'>str_charstar</span>(<span class='string'>&quot;:memory:&quot;</span>);
+                <span class='ident'>ffi</span>::<span class='ident'>sqlite3_open</span>(<span class='ident'>c_memory</span>.<span class='ident'>as_ptr</span>(), <span class='ident'>db</span>)
+            }
+        }
+        <span class='ident'>DatabaseConnection</span>::<span class='ident'>new</span>(<span class='ident'>InMemory</span>)
+    }
+
+    <span class='doccomment'>/// Prepare/compile an SQL statement.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>prepare</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>sql</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span><span class='ident'>PreparedStatement</span><span class='op'>&gt;</span> {
+        <span class='kw'>match</span> <span class='self'>self</span>.<span class='ident'>prepare_with_offset</span>(<span class='ident'>sql</span>) {
+            <span class='prelude-val'>Ok</span>((<span class='ident'>cur</span>, _)) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='ident'>cur</span>),
+            <span class='prelude-val'>Err</span>(<span class='ident'>e</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>e</span>),
+        }
+    }
+
+    <span class='doccomment'>/// Prepare/compile an SQL statement and give offset to remaining text.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// *TODO: give caller a safe way to use the offset. Perhaps</span>
+    <span class='doccomment'>/// return a &amp;&#39;x str?*</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>prepare_with_offset</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>sql</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>(<span class='ident'>PreparedStatement</span>, <span class='ident'>usize</span>)<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='ident'>ptr</span>::<span class='ident'>null_mut</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>tail</span> <span class='op'>=</span> <span class='ident'>ptr</span>::<span class='ident'>null</span>();
+        <span class='kw'>let</span> <span class='ident'>z_sql</span> <span class='op'>=</span> <span class='ident'>str_charstar</span>(<span class='ident'>sql</span>);
+        <span class='kw'>let</span> <span class='ident'>n_byte</span> <span class='op'>=</span> <span class='ident'>sql</span>.<span class='ident'>len</span>() <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> {
+            <span class='ident'>ffi</span>::<span class='ident'>sqlite3_prepare_v2</span>(<span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>, <span class='ident'>z_sql</span>.<span class='ident'>as_ptr</span>(), <span class='ident'>n_byte</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>stmt</span>, <span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>tail</span>)
+        };
+        <span class='kw'>match</span> <span class='ident'>decode_result</span>(<span class='ident'>r</span>,
+                            <span class='string'>&quot;sqlite3_prepare_v2&quot;</span>,
+                            <span class='ident'>maybe</span>(<span class='self'>self</span>.<span class='ident'>detailed</span>, <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>)) {
+            <span class='prelude-val'>Ok</span>(()) <span class='op'>=&gt;</span> {
+                <span class='kw'>let</span> <span class='ident'>ps</span> <span class='op'>=</span> <span class='ident'>PreparedStatement</span> {
+                    <span class='ident'>stmt</span>: <span class='ident'>stmt</span>,
+                    <span class='ident'>db</span>: <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>clone</span>(),
+                    <span class='ident'>detailed</span>: <span class='self'>self</span>.<span class='ident'>detailed</span> };
+                <span class='kw'>let</span> <span class='ident'>offset</span> <span class='op'>=</span> <span class='ident'>tail</span> <span class='kw'>as</span> <span class='ident'>usize</span> <span class='op'>-</span> <span class='ident'>z_sql</span>.<span class='ident'>as_ptr</span>() <span class='kw'>as</span> <span class='ident'>usize</span>;
+                <span class='prelude-val'>Ok</span>((<span class='ident'>ps</span>, <span class='ident'>offset</span>))
+            }
+            <span class='prelude-val'>Err</span>(<span class='ident'>code</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>code</span>),
+        }
+    }
+
+    <span class='doccomment'>/// Return a copy of the latest error message.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Return `&quot;&quot;` in case of ill-formed utf-8 or null.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// *TODO: represent error state in types: &quot;If a prior API call</span>
+    <span class='doccomment'>/// failed but the most recent API call succeeded, the return</span>
+    <span class='doccomment'>/// value from sqlite3_errcode() is undefined.&quot;*</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf `ffi::sqlite3_errmsg`.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>errmsg</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>String</span> {
+        <span class='ident'>DatabaseConnection</span>::<span class='ident'>_errmsg</span>(<span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>)
+    }
+
+    <span class='kw'>fn</span> <span class='ident'>_errmsg</span>(<span class='ident'>db</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span>) <span class='op'>-&gt;</span> <span class='ident'>String</span> {
+        <span class='kw'>let</span> <span class='ident'>errmsg</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_errmsg</span>(<span class='ident'>db</span>) };
+        <span class='comment'>// returning Option&lt;String&gt; doesn&#39;t seem worthwhile.</span>
+        <span class='ident'>charstar_str</span>(<span class='kw-2'>&amp;</span>(<span class='ident'>errmsg</span>)).<span class='ident'>unwrap_or</span>(<span class='string'>&quot;&quot;</span>).<span class='ident'>to_string</span>()
+    }
+
+    <span class='doccomment'>/// One-Step Query Execution Interface</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf [sqlite3_exec][exec]</span>
+    <span class='doccomment'>/// [exec]: http://www.sqlite.org/c3ref/exec.html</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>///  - TODO: callback support?</span>
+    <span class='doccomment'>///  - TODO: errmsg support</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>exec</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>sql</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>c_sql</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>std_ffi</span>::<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>sql</span>.<span class='ident'>as_bytes</span>()));
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> {
+            <span class='ident'>ffi</span>::<span class='ident'>sqlite3_exec</span>(<span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>,
+                              <span class='ident'>c_sql</span>.<span class='ident'>as_ptr</span>(),
+                              <span class='prelude-val'>None</span>,
+                              <span class='ident'>ptr</span>::<span class='ident'>null_mut</span>(),
+                              <span class='ident'>ptr</span>::<span class='ident'>null_mut</span>())
+        };
+        <span class='ident'>decode_result</span>(<span class='ident'>result</span>, <span class='string'>&quot;sqlite3_exec&quot;</span>, <span class='ident'>maybe</span>(<span class='self'>self</span>.<span class='ident'>detailed</span>, <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>))
+    }
+
+    <span class='doccomment'>/// Return the number of database rows that were changed or</span>
+    <span class='doccomment'>/// inserted or deleted by the most recently completed SQL</span>
+    <span class='doccomment'>/// statement.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf `sqlite3_changes`.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>changes</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>u64</span> {
+        <span class='kw'>let</span> <span class='ident'>dbh</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>;
+        <span class='kw'>let</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_changes</span>(<span class='ident'>dbh</span>) };
+        <span class='ident'>count</span> <span class='kw'>as</span> <span class='ident'>u64</span>
+    }
+
+    <span class='doccomment'>/// Set a busy timeout and clear any previously set handler.</span>
+    <span class='doccomment'>/// If duration is zero or negative, turns off busy handler.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>busy_timeout</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>d</span>: <span class='ident'>Duration</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ms</span> <span class='op'>=</span> <span class='ident'>d</span>.<span class='ident'>num_milliseconds</span>() <span class='kw'>as</span> <span class='ident'>i32</span>;
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_busy_timeout</span>(<span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>, <span class='ident'>ms</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>result</span>,
+                      <span class='string'>&quot;sqlite3_busy_timeout&quot;</span>,
+                      <span class='ident'>maybe</span>(<span class='self'>self</span>.<span class='ident'>detailed</span>, <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>))
+    }
+
+    <span class='doccomment'>/// Return the rowid of the most recent successful INSERT into</span>
+    <span class='doccomment'>/// a rowid table or virtual table.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf `sqlite3_last_insert_rowid`</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>last_insert_rowid</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>i64</span> {
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_last_insert_rowid</span>(<span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>) }
+    }
+
+    <span class='doccomment'>/// Expose the underlying `sqlite3` struct pointer for use</span>
+    <span class='doccomment'>/// with the `ffi` module.</span>
+    <span class='kw'>pub</span> <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>expose</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span> {
+        <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>
+    }
+}
+
+
+<span class='doccomment'>/// Convert from sqlite3 API utf8 to rust str.</span>
+<span class='kw'>fn</span> <span class='ident'>charstar_str</span>(<span class='ident'>utf_bytes</span>: <span class='kw-2'>&amp;</span><span class='op'>*</span><span class='kw'>const</span> <span class='ident'>c_char</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+    <span class='kw'>if</span> <span class='ident'>utf_bytes</span>.<span class='ident'>is_null</span>() {
+        <span class='kw'>return</span> <span class='prelude-val'>None</span>;
+    }
+    <span class='kw'>let</span> <span class='ident'>c_str</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>CStr</span>::<span class='ident'>from_ptr</span>(<span class='op'>*</span><span class='ident'>utf_bytes</span>) };
+
+    <span class='prelude-val'>Some</span>(<span class='kw'>unsafe</span> { <span class='ident'>str</span>::<span class='ident'>from_utf8_unchecked</span>(<span class='ident'>c_str</span>.<span class='ident'>to_bytes</span>()) })
+}
+
+<span class='doccomment'>/// Convenience function to get a `CString` from a str</span>
+<span class='attribute'>#[<span class='ident'>inline</span>(<span class='ident'>always</span>)]</span>
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>str_charstar</span>(<span class='ident'>s</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>std_ffi</span>::<span class='ident'>CString</span> {
+    <span class='ident'>std_ffi</span>::<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='ident'>s</span>.<span class='ident'>as_bytes</span>()).<span class='ident'>unwrap_or</span>(<span class='ident'>std_ffi</span>::<span class='ident'>CString</span>::<span class='ident'>new</span>(<span class='string'>&quot;&quot;</span>).<span class='ident'>unwrap</span>())
+}
+
+<span class='doccomment'>/// A prepared statement.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>PreparedStatement</span> {
+    <span class='ident'>db</span>: <span class='ident'>Rc</span><span class='op'>&lt;</span><span class='ident'>Database</span><span class='op'>&gt;</span>,
+    <span class='ident'>stmt</span>: <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3_stmt</span>,
+    <span class='ident'>detailed</span>: <span class='ident'>bool</span>,
+}
+
+<span class='kw'>impl</span> <span class='ident'>Drop</span> <span class='kw'>for</span> <span class='ident'>PreparedStatement</span> {
+    <span class='kw'>fn</span> <span class='ident'>drop</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='kw'>unsafe</span> {
+
+            <span class='comment'>// We ignore the return code from finalize because:</span>
+
+            <span class='comment'>// &quot;If If the most recent evaluation of statement S</span>
+            <span class='comment'>// failed, then sqlite3_finalize(S) returns the</span>
+            <span class='comment'>// appropriate error code&quot;</span>
+
+            <span class='comment'>// &quot;The sqlite3_finalize(S) routine can be called at any</span>
+            <span class='comment'>// point during the life cycle of prepared statement S&quot;</span>
+
+            <span class='ident'>ffi</span>::<span class='ident'>sqlite3_finalize</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>);
+        }
+    }
+}
+
+
+<span class='doccomment'>/// Type for picking out a bind parameter.</span>
+<span class='doccomment'>/// 1-indexed</span>
+<span class='kw'>pub</span> <span class='kw'>type</span> <span class='ident'>ParamIx</span> <span class='op'>=</span> <span class='ident'>u16</span>;
+
+<span class='kw'>impl</span> <span class='ident'>PreparedStatement</span> {
+    <span class='doccomment'>/// Begin executing a statement.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// An sqlite &quot;row&quot; only lasts until the next call to</span>
+    <span class='doccomment'>/// `ffi::sqlite3_step()`, so `ResultSet` has a corresponding</span>
+    <span class='doccomment'>/// lifetime constraint, which prevents it `ResultSet` from</span>
+    <span class='doccomment'>/// implementing the `Iterator` trait. See the `Query` trait</span>
+    <span class='doccomment'>/// for and `Iterator` over query results.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>execute</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>ResultSet</span> {
+        <span class='ident'>ResultSet</span> { <span class='ident'>statement</span>: <span class='self'>self</span> }
+    }
+}
+
+<span class='doccomment'>/// A compiled prepared statement that may take parameters.</span>
+<span class='doccomment'>/// **Note:** &quot;The leftmost SQL parameter has an index of 1.&quot;[1]</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// [1]: http://www.sqlite.org/c3ref/bind_blob.html</span>
+<span class='kw'>impl</span> <span class='ident'>PreparedStatement</span> {
+    <span class='doccomment'>/// Opt out of copies of error message details.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>ignore_detail</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='self'>self</span>.<span class='ident'>detailed</span> <span class='op'>=</span> <span class='bool-val'>false</span>;
+    }
+
+
+    <span class='kw'>fn</span> <span class='ident'>detail_db</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span><span class='op'>&gt;</span> {
+        <span class='kw'>if</span> <span class='self'>self</span>.<span class='ident'>detailed</span> {
+            <span class='kw'>let</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_db_handle</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>) };
+            <span class='prelude-val'>Some</span>(<span class='ident'>db</span>)
+        } <span class='kw'>else</span> {
+            <span class='prelude-val'>None</span>
+        }
+    }
+
+    <span class='kw'>fn</span> <span class='ident'>get_detail</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>String</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>detail_db</span>().<span class='ident'>map</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>_errmsg</span>)
+    }
+
+    <span class='doccomment'>/// Bind null to a statement parameter.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_null</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_null</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_null&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Bind an int to a statement parameter.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_int</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>, <span class='ident'>value</span>: <span class='ident'>i32</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_int</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>, <span class='ident'>value</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_int&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Bind an int64 to a statement parameter.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_int64</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>, <span class='ident'>value</span>: <span class='ident'>i64</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_int64</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>, <span class='ident'>value</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_int64&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Bind a double to a statement parameter.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_double</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>, <span class='ident'>value</span>: <span class='ident'>f64</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_double</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>, <span class='ident'>value</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_double&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Bind a (copy of a) str to a statement parameter.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// *TODO: support binding without copying strings, blobs*</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_text</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>, <span class='ident'>value</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='comment'>// SQLITE_TRANSIENT =&gt; SQLite makes a copy</span>
+        <span class='kw'>let</span> <span class='ident'>transient</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>mem</span>::<span class='ident'>transmute</span>(<span class='op'>-</span><span class='number'>1</span> <span class='kw'>as</span> <span class='ident'>isize</span>) };
+        <span class='kw'>let</span> <span class='ident'>c_value</span> <span class='op'>=</span> <span class='ident'>str_charstar</span>(<span class='ident'>value</span>);
+        <span class='kw'>let</span> <span class='ident'>len</span> <span class='op'>=</span> <span class='ident'>value</span>.<span class='ident'>len</span>() <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_text</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>, <span class='ident'>c_value</span>.<span class='ident'>as_ptr</span>(), <span class='ident'>len</span>, <span class='ident'>transient</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_text&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Bind a (copy of a) byte sequence to a statement parameter.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// *TODO: support binding without copying strings, blobs*</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_blob</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ParamIx</span>, <span class='ident'>value</span>: <span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>]) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>ix</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='comment'>// SQLITE_TRANSIENT =&gt; SQLite makes a copy</span>
+        <span class='kw'>let</span> <span class='ident'>transient</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>mem</span>::<span class='ident'>transmute</span>(<span class='op'>-</span><span class='number'>1</span> <span class='kw'>as</span> <span class='ident'>isize</span>) };
+        <span class='kw'>let</span> <span class='ident'>len</span> <span class='op'>=</span> <span class='ident'>value</span>.<span class='ident'>len</span>() <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='comment'>// from &amp;[u8] to &amp;[i8]</span>
+        <span class='kw'>let</span> <span class='ident'>val</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>mem</span>::<span class='ident'>transmute</span>(<span class='ident'>value</span>.<span class='ident'>as_ptr</span>()) };
+        <span class='kw'>let</span> <span class='ident'>r</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_blob</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>, <span class='ident'>ix</span>, <span class='ident'>val</span>, <span class='ident'>len</span>, <span class='ident'>transient</span>) };
+        <span class='ident'>decode_result</span>(<span class='ident'>r</span>, <span class='string'>&quot;sqlite3_bind_blob&quot;</span>, <span class='self'>self</span>.<span class='ident'>detail_db</span>())
+    }
+
+    <span class='doccomment'>/// Clear all parameter bindings.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>clear_bindings</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+        <span class='comment'>// We ignore the return value, since no return codes are documented.</span>
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_clear_bindings</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>) };
+    }
+
+    <span class='doccomment'>/// Return the number of SQL parameters.</span>
+    <span class='doccomment'>/// If parameters of the ?NNN form are used, there may be gaps in the list.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>bind_parameter_count</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>ParamIx</span> {
+        <span class='kw'>let</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_bind_parameter_count</span>(<span class='self'>self</span>.<span class='ident'>stmt</span>) };
+        <span class='ident'>count</span> <span class='kw'>as</span> <span class='ident'>ParamIx</span>
+    }
+
+    <span class='doccomment'>/// Expose the underlying `sqlite3_stmt` struct pointer for use</span>
+    <span class='doccomment'>/// with the `ffi` module.</span>
+    <span class='kw'>pub</span> <span class='kw'>unsafe</span> <span class='kw'>fn</span> <span class='ident'>expose</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3_stmt</span> {
+        <span class='self'>self</span>.<span class='ident'>stmt</span>
+    }
+
+    <span class='doccomment'>/// Return the number of database rows that were changed or</span>
+    <span class='doccomment'>/// inserted or deleted by this statement if it is the most</span>
+    <span class='doccomment'>/// recently run on its database connection.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf `sqlite3_changes`.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>changes</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>u64</span> {
+        <span class='kw'>let</span> <span class='ident'>dbh</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>db</span>.<span class='ident'>handle</span>;
+        <span class='kw'>let</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_changes</span>(<span class='ident'>dbh</span>) };
+        <span class='ident'>count</span> <span class='kw'>as</span> <span class='ident'>u64</span>
+    }
+}
+
+
+<span class='doccomment'>/// Results of executing a `prepare()`d statement.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>ResultSet</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span><span class='op'>&gt;</span> {
+    <span class='ident'>statement</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;res</span> <span class='kw-2'>mut</span> <span class='ident'>PreparedStatement</span>,
+}
+
+<span class='macro'>enum_from_primitive</span><span class='macro'>!</span> {
+    <span class='attribute'>#[<span class='ident'>derive</span>(<span class='ident'>Debug</span>, <span class='ident'>PartialEq</span>, <span class='ident'>Eq</span>)]</span>
+    <span class='attribute'>#[<span class='ident'>allow</span>(<span class='ident'>non_camel_case_types</span>)]</span>
+    <span class='kw'>enum</span> <span class='ident'>Step</span> {
+        <span class='ident'>SQLITE_ROW</span>       <span class='op'>=</span> <span class='number'>100</span>,
+        <span class='ident'>SQLITE_DONE</span>      <span class='op'>=</span> <span class='number'>101</span>,
+    }
+}
+
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span><span class='op'>&gt;</span> <span class='ident'>Drop</span> <span class='kw'>for</span> <span class='ident'>ResultSet</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span><span class='op'>&gt;</span> {
+    <span class='kw'>fn</span> <span class='ident'>drop</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>) {
+
+        <span class='comment'>// We ignore the return code from reset because it has already</span>
+        <span class='comment'>// been reported:</span>
+        <span class='comment'>//</span>
+        <span class='comment'>// &quot;If the most recent call to sqlite3_step(S) for the prepared</span>
+        <span class='comment'>// statement S indicated an error, then sqlite3_reset(S)</span>
+        <span class='comment'>// returns an appropriate error code.&quot;</span>
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_reset</span>(<span class='self'>self</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>) };
+    }
+}
+
+
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span>: <span class='lifetime'>&#39;row</span>, <span class='lifetime'>&#39;row</span><span class='op'>&gt;</span> <span class='ident'>ResultSet</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span><span class='op'>&gt;</span> {
+    <span class='doccomment'>/// Execute the next step of a prepared statement.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>step</span>(<span class='kw-2'>&amp;</span><span class='lifetime'>&#39;row</span> <span class='kw-2'>mut</span> <span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span><span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>ResultRow</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span>, <span class='lifetime'>&#39;row</span><span class='op'>&gt;&gt;</span><span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_step</span>(<span class='self'>self</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>) };
+        <span class='kw'>match</span> <span class='ident'>Step</span>::<span class='ident'>from_i32</span>(<span class='ident'>result</span>) {
+            <span class='prelude-val'>Some</span>(<span class='ident'>SQLITE_ROW</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='ident'>ResultRow</span> { <span class='ident'>rows</span>: <span class='self'>self</span> })),
+            <span class='prelude-val'>Some</span>(<span class='ident'>SQLITE_DONE</span>) <span class='op'>=&gt;</span> <span class='prelude-val'>Ok</span>(<span class='prelude-val'>None</span>),
+            <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='prelude-val'>Err</span>(<span class='ident'>error_result</span>(<span class='ident'>result</span>, <span class='string'>&quot;step&quot;</span>, <span class='self'>self</span>.<span class='ident'>statement</span>.<span class='ident'>get_detail</span>())),
+        }
+    }
+}
+
+
+<span class='doccomment'>/// Access to columns of a row.</span>
+<span class='kw'>pub</span> <span class='kw'>struct</span> <span class='ident'>ResultRow</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span>: <span class='lifetime'>&#39;row</span>, <span class='lifetime'>&#39;row</span><span class='op'>&gt;</span> {
+    <span class='ident'>rows</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;row</span> <span class='kw-2'>mut</span> <span class='ident'>ResultSet</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span><span class='op'>&gt;</span>,
+}
+
+<span class='doccomment'>/// Column index for accessing parts of a row.</span>
+<span class='kw'>pub</span> <span class='kw'>type</span> <span class='ident'>ColIx</span> <span class='op'>=</span> <span class='ident'>u32</span>;
+
+<span class='doccomment'>/// Access to one row (step) of a result.</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// Note &quot;These routines attempt to convert the value where appropriate.&quot;[1]</span>
+<span class='doccomment'>/// and &quot;The value returned by `sqlite3_column_type()` is only</span>
+<span class='doccomment'>/// meaningful if no type conversions have occurred as described</span>
+<span class='doccomment'>/// below. After a type conversion, the value returned by</span>
+<span class='doccomment'>/// `sqlite3_column_type()` is undefined.&quot;[1]</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// [1]: http://www.sqlite.org/c3ref/column_blob.html</span>
+<span class='kw'>impl</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span>, <span class='lifetime'>&#39;row</span><span class='op'>&gt;</span> <span class='ident'>ResultRow</span><span class='op'>&lt;</span><span class='lifetime'>&#39;res</span>, <span class='lifetime'>&#39;row</span><span class='op'>&gt;</span> {
+    <span class='doccomment'>/// cf `sqlite3_column_count`</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// *TODO: consider returning Option&lt;uint&gt;</span>
+    <span class='doccomment'>/// &quot;This routine returns 0 if pStmt is an SQL statement that does</span>
+    <span class='doccomment'>/// not return data (for example an UPDATE).&quot;*</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_count</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>) <span class='op'>-&gt;</span> <span class='ident'>ColIx</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_count</span>(<span class='ident'>stmt</span>) };
+        <span class='ident'>result</span> <span class='kw'>as</span> <span class='ident'>ColIx</span>
+    }
+
+    <span class='doccomment'>/// Look up a column name and compute some function of it.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Return `default` if there is no column `i`</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// cf `sqlite_column_name`</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>with_column_name</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>F</span>: <span class='ident'>Fn</span>(<span class='kw-2'>&amp;</span><span class='ident'>str</span>) <span class='op'>-&gt;</span> <span class='ident'>T</span><span class='op'>&gt;</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='self'>self</span>, <span class='ident'>i</span>: <span class='ident'>ColIx</span>, <span class='ident'>default</span>: <span class='ident'>T</span>, <span class='ident'>f</span>: <span class='ident'>F</span>) <span class='op'>-&gt;</span> <span class='ident'>T</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>n</span> <span class='op'>=</span> <span class='ident'>i</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_name</span>(<span class='ident'>stmt</span>, <span class='ident'>n</span>) };
+        <span class='kw'>match</span> <span class='ident'>charstar_str</span>(<span class='kw-2'>&amp;</span><span class='ident'>result</span>) {
+            <span class='prelude-val'>Some</span>(<span class='ident'>name</span>) <span class='op'>=&gt;</span> <span class='ident'>f</span>(<span class='ident'>name</span>),
+            <span class='prelude-val'>None</span> <span class='op'>=&gt;</span> <span class='ident'>default</span>,
+        }
+    }
+
+    <span class='doccomment'>/// Look up the type of a column.</span>
+    <span class='doccomment'>///</span>
+    <span class='doccomment'>/// Return `SQLITE_NULL` if there is no such `col`.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_type</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='ident'>ColumnType</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>i_col</span> <span class='op'>=</span> <span class='ident'>col</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>result</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_type</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) };
+        <span class='comment'>// fail on out-of-range result instead?</span>
+        <span class='ident'>ColumnType</span>::<span class='ident'>from_i32</span>(<span class='ident'>result</span>).<span class='ident'>unwrap_or</span>(<span class='ident'>SQLITE_NULL</span>)
+    }
+
+    <span class='doccomment'>/// Get `int` value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_int</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='ident'>i32</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>i_col</span> <span class='op'>=</span> <span class='ident'>col</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_int</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) }
+    }
+
+    <span class='doccomment'>/// Get `int64` value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_int64</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='ident'>i64</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>i_col</span> <span class='op'>=</span> <span class='ident'>col</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_int64</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) }
+    }
+
+    <span class='doccomment'>/// Get `f64` (aka double) value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_double</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='ident'>f64</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>i_col</span> <span class='op'>=</span> <span class='ident'>col</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_double</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) }
+    }
+
+    <span class='doccomment'>/// Get `Option&lt;String&gt;` (aka text) value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_text</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>String</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>column_str</span>(<span class='ident'>col</span>).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>s</span><span class='op'>|</span> <span class='ident'>s</span>.<span class='ident'>to_string</span>())
+    }
+
+    <span class='doccomment'>/// Get `Option&lt;&amp;str&gt;` (aka text) value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_str</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span><span class='ident'>str</span><span class='op'>&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>column_slice</span>(<span class='ident'>col</span>).<span class='ident'>and_then</span>(<span class='op'>|</span><span class='ident'>slice</span><span class='op'>|</span> <span class='ident'>str</span>::<span class='ident'>from_utf8</span>(<span class='ident'>slice</span>).<span class='ident'>ok</span>())
+    }
+
+    <span class='doccomment'>/// Get `Option&lt;Vec&lt;u8&gt;&gt;` (aka blob) value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_blob</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>Vec</span><span class='op'>&lt;</span><span class='ident'>u8</span><span class='op'>&gt;&gt;</span> {
+        <span class='self'>self</span>.<span class='ident'>column_slice</span>(<span class='ident'>col</span>).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>bs</span><span class='op'>|</span> <span class='ident'>bs</span>.<span class='ident'>to_vec</span>())
+    }
+
+    <span class='doccomment'>/// Get `Option&lt;&amp;[u8]&gt;` (aka blob) value of a column.</span>
+    <span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>column_slice</span>(<span class='kw-2'>&amp;</span><span class='self'>self</span>, <span class='ident'>col</span>: <span class='ident'>ColIx</span>) <span class='op'>-&gt;</span> <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='kw-2'>&amp;</span>[<span class='ident'>u8</span>]<span class='op'>&gt;</span> {
+        <span class='kw'>let</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='self'>self</span>.<span class='ident'>rows</span>.<span class='ident'>statement</span>.<span class='ident'>stmt</span>;
+        <span class='kw'>let</span> <span class='ident'>i_col</span> <span class='op'>=</span> <span class='ident'>col</span> <span class='kw'>as</span> <span class='ident'>c_int</span>;
+        <span class='kw'>let</span> <span class='ident'>bs</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_blob</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) } <span class='kw'>as</span> <span class='op'>*</span><span class='kw'>const</span> ::<span class='ident'>libc</span>::<span class='ident'>c_uchar</span>;
+        <span class='kw'>if</span> <span class='ident'>bs</span>.<span class='ident'>is_null</span>() {
+            <span class='kw'>return</span> <span class='prelude-val'>None</span>;
+        }
+        <span class='kw'>let</span> <span class='ident'>len</span> <span class='op'>=</span> <span class='kw'>unsafe</span> { <span class='ident'>ffi</span>::<span class='ident'>sqlite3_column_bytes</span>(<span class='ident'>stmt</span>, <span class='ident'>i_col</span>) } <span class='kw'>as</span> <span class='ident'>usize</span>;
+        <span class='prelude-val'>Some</span>(<span class='kw'>unsafe</span> { <span class='ident'>slice</span>::<span class='ident'>from_raw_parts</span>(<span class='ident'>bs</span>, <span class='ident'>len</span>) })
+    }
+}
+
+
+<span class='doccomment'>/// Decode SQLite result as `SqliteResult`.</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// Note the use of the `Result&lt;T, E&gt;` pattern to distinguish errors in</span>
+<span class='doccomment'>/// the type system.</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// # Panic</span>
+<span class='doccomment'>///</span>
+<span class='doccomment'>/// Panics if result is not a SQLITE error code.</span>
+<span class='kw'>pub</span> <span class='kw'>fn</span> <span class='ident'>decode_result</span>(<span class='ident'>result</span>: <span class='ident'>c_int</span>,
+                     <span class='ident'>desc</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;static</span> <span class='ident'>str</span>,
+                     <span class='ident'>detail_db</span>: <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='op'>*</span><span class='kw-2'>mut</span> <span class='ident'>ffi</span>::<span class='ident'>sqlite3</span><span class='op'>&gt;</span>)
+                     <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+    <span class='kw'>if</span> <span class='ident'>result</span> <span class='op'>==</span> <span class='ident'>SQLITE_OK</span> <span class='kw'>as</span> <span class='ident'>c_int</span> {
+        <span class='prelude-val'>Ok</span>(())
+    } <span class='kw'>else</span> {
+        <span class='kw'>let</span> <span class='ident'>detail</span> <span class='op'>=</span> <span class='ident'>detail_db</span>.<span class='ident'>map</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>_errmsg</span>);
+        <span class='prelude-val'>Err</span>(<span class='ident'>error_result</span>(<span class='ident'>result</span>, <span class='ident'>desc</span>, <span class='ident'>detail</span>))
+    }
+}
+
+
+<span class='kw'>fn</span> <span class='ident'>error_result</span>(<span class='ident'>result</span>: <span class='ident'>c_int</span>, <span class='ident'>desc</span>: <span class='kw-2'>&amp;</span><span class='lifetime'>&#39;static</span> <span class='ident'>str</span>, <span class='ident'>detail</span>: <span class='prelude-ty'>Option</span><span class='op'>&lt;</span><span class='ident'>String</span><span class='op'>&gt;</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteError</span> {
+    <span class='ident'>SqliteError</span> {
+        <span class='ident'>kind</span>: <span class='ident'>SqliteErrorCode</span>::<span class='ident'>from_i32</span>(<span class='ident'>result</span>).<span class='ident'>unwrap</span>(),
+        <span class='ident'>desc</span>: <span class='ident'>desc</span>,
+        <span class='ident'>detail</span>: <span class='ident'>detail</span>,
+    }
+}
+
+
+<span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
+<span class='kw'>mod</span> <span class='ident'>test_opening</span> {
+    <span class='kw'>use</span> <span class='kw'>super</span>::{<span class='ident'>DatabaseConnection</span>, <span class='ident'>SqliteResult</span>};
+    <span class='kw'>use</span> <span class='ident'>time</span>::<span class='ident'>Duration</span>;
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>db_construct_typechecks</span>() {
+        <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>().<span class='ident'>is_ok</span>())
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>db_busy_timeout</span>() {
+        <span class='kw'>fn</span> <span class='ident'>go</span>() <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>());
+            <span class='ident'>db</span>.<span class='ident'>busy_timeout</span>(<span class='ident'>Duration</span>::<span class='ident'>seconds</span>(<span class='number'>2</span>))
+        }
+        <span class='ident'>go</span>().<span class='ident'>unwrap</span>();
+    }
+
+    <span class='comment'>// TODO: _v2 with flags</span>
+}
+
+
+<span class='attribute'>#[<span class='ident'>cfg</span>(<span class='ident'>test</span>)]</span>
+<span class='kw'>mod</span> <span class='ident'>tests</span> {
+    <span class='kw'>use</span> <span class='kw'>super</span>::{<span class='ident'>DatabaseConnection</span>, <span class='ident'>SqliteResult</span>, <span class='ident'>ResultSet</span>};
+    <span class='kw'>use</span> <span class='ident'>std</span>::<span class='ident'>str</span>;
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>stmt_new_types</span>() {
+        <span class='kw'>fn</span> <span class='ident'>go</span>() <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+            <span class='kw'>let</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>());
+            <span class='kw'>let</span> <span class='ident'>res</span> <span class='op'>=</span> <span class='ident'>db</span>.<span class='ident'>prepare</span>(<span class='string'>&quot;select 1 + 1&quot;</span>).<span class='ident'>map</span>(<span class='op'>|</span><span class='ident'>_s</span><span class='op'>|</span> ());
+            <span class='ident'>res</span>
+        }
+        <span class='ident'>go</span>().<span class='ident'>unwrap</span>();
+    }
+
+
+    <span class='kw'>fn</span> <span class='ident'>with_query</span><span class='op'>&lt;</span><span class='ident'>T</span>, <span class='ident'>F</span><span class='op'>&gt;</span>(<span class='ident'>sql</span>: <span class='kw-2'>&amp;</span><span class='ident'>str</span>, <span class='kw-2'>mut</span> <span class='ident'>f</span>: <span class='ident'>F</span>) <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span><span class='ident'>T</span><span class='op'>&gt;</span>
+        <span class='kw'>where</span> <span class='ident'>F</span>: <span class='ident'>FnMut</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>ResultSet</span>) <span class='op'>-&gt;</span> <span class='ident'>T</span>
+    {
+        <span class='kw'>let</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>());
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>s</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>db</span>.<span class='ident'>prepare</span>(<span class='ident'>sql</span>));
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rows</span> <span class='op'>=</span> <span class='ident'>s</span>.<span class='ident'>execute</span>();
+        <span class='prelude-val'>Ok</span>(<span class='ident'>f</span>(<span class='kw-2'>&amp;</span><span class='kw-2'>mut</span> <span class='ident'>rows</span>))
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>query_two_rows</span>() {
+        <span class='kw'>fn</span> <span class='ident'>go</span>() <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>(<span class='ident'>u32</span>, <span class='ident'>i32</span>)<span class='op'>&gt;</span> {
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>count</span> <span class='op'>=</span> <span class='number'>0</span>;
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>sum</span> <span class='op'>=</span> <span class='number'>0i32</span>;
+
+            <span class='ident'>with_query</span>(<span class='string'>&quot;select 1
+                       union all
+                       select 2&quot;</span>,
+                       <span class='op'>|</span><span class='ident'>rows</span><span class='op'>|</span> {
+                <span class='kw'>loop</span> {
+                    <span class='kw'>match</span> <span class='ident'>rows</span>.<span class='ident'>step</span>() {
+                        <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='kw-2'>ref</span> <span class='kw-2'>mut</span> <span class='ident'>row</span>)) <span class='op'>=&gt;</span> {
+                            <span class='ident'>count</span> <span class='op'>+=</span> <span class='number'>1</span>;
+                            <span class='ident'>sum</span> <span class='op'>+=</span> <span class='ident'>row</span>.<span class='ident'>column_int</span>(<span class='number'>0</span>);
+                        }
+                        _ <span class='op'>=&gt;</span> <span class='kw'>break</span>,
+                    }
+                }
+                (<span class='ident'>count</span>, <span class='ident'>sum</span>)
+            })
+        }
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>go</span>(), <span class='prelude-val'>Ok</span>((<span class='number'>2</span>, <span class='number'>3</span>)))
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>query_null_string</span>() {
+        <span class='ident'>with_query</span>(<span class='string'>&quot;select null&quot;</span>, <span class='op'>|</span><span class='ident'>rows</span><span class='op'>|</span> {
+                <span class='kw'>match</span> <span class='ident'>rows</span>.<span class='ident'>step</span>() {
+                    <span class='prelude-val'>Ok</span>(<span class='prelude-val'>Some</span>(<span class='kw-2'>ref</span> <span class='kw-2'>mut</span> <span class='ident'>row</span>)) <span class='op'>=&gt;</span> {
+                        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>row</span>.<span class='ident'>column_text</span>(<span class='number'>0</span>), <span class='prelude-val'>None</span>);
+                    }
+                    _ <span class='op'>=&gt;</span> {
+                        <span class='macro'>panic</span><span class='macro'>!</span>(<span class='string'>&quot;Expected a row&quot;</span>);
+                    }
+                }
+            })
+            .<span class='ident'>unwrap</span>();
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>detailed_errors</span>() {
+        <span class='kw'>let</span> <span class='ident'>go</span> <span class='op'>=</span> <span class='op'>||</span> <span class='op'>-&gt;</span> <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> {
+            <span class='kw'>let</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>());
+            <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>db</span>.<span class='ident'>prepare</span>(<span class='string'>&quot;select bogus&quot;</span>));
+            <span class='prelude-val'>Ok</span>(())
+        };
+        <span class='kw'>let</span> <span class='ident'>err</span> <span class='op'>=</span> <span class='ident'>go</span>().<span class='ident'>err</span>().<span class='ident'>unwrap</span>();
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>err</span>.<span class='ident'>detail</span>(), <span class='prelude-val'>Some</span>(<span class='string'>&quot;no such column: bogus&quot;</span>.<span class='ident'>to_string</span>()))
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>no_alloc_errors_db</span>() {
+        <span class='kw'>let</span> <span class='ident'>go</span> <span class='op'>=</span> <span class='op'>||</span> {
+            <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>());
+            <span class='ident'>db</span>.<span class='ident'>ignore_detail</span>();
+            <span class='macro'>try</span><span class='macro'>!</span>(<span class='ident'>db</span>.<span class='ident'>prepare</span>(<span class='string'>&quot;select bogus&quot;</span>));
+            <span class='prelude-val'>Ok</span>(())
+        };
+        <span class='kw'>let</span> <span class='ident'>x</span>: <span class='ident'>SqliteResult</span><span class='op'>&lt;</span>()<span class='op'>&gt;</span> <span class='op'>=</span> <span class='ident'>go</span>();
+        <span class='kw'>let</span> <span class='ident'>err</span> <span class='op'>=</span> <span class='ident'>x</span>.<span class='ident'>err</span>().<span class='ident'>unwrap</span>();
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>err</span>.<span class='ident'>detail</span>(), <span class='prelude-val'>None</span>)
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>no_alloc_errors_stmt</span>() {
+        <span class='kw'>let</span> <span class='ident'>db</span> <span class='op'>=</span> <span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>().<span class='ident'>unwrap</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stmt</span> <span class='op'>=</span> <span class='ident'>db</span>.<span class='ident'>prepare</span>(<span class='string'>&quot;select 1&quot;</span>).<span class='ident'>unwrap</span>();
+        <span class='ident'>stmt</span>.<span class='ident'>ignore_detail</span>();
+        <span class='kw'>let</span> <span class='ident'>oops</span> <span class='op'>=</span> <span class='ident'>stmt</span>.<span class='ident'>bind_text</span>(<span class='number'>3</span>, <span class='string'>&quot;abc&quot;</span>);
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>oops</span>.<span class='ident'>err</span>().<span class='ident'>unwrap</span>().<span class='ident'>detail</span>(), <span class='prelude-val'>None</span>)
+    }
+
+    <span class='attribute'>#[<span class='ident'>test</span>]</span>
+    <span class='kw'>fn</span> <span class='ident'>non_utf8_str</span>() {
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>stmt</span> <span class='op'>=</span>
+            <span class='ident'>DatabaseConnection</span>::<span class='ident'>in_memory</span>().<span class='ident'>unwrap</span>().<span class='ident'>prepare</span>(<span class='string'>&quot;SELECT x&#39;4546FF&#39;&quot;</span>).<span class='ident'>unwrap</span>();
+        <span class='kw'>let</span> <span class='kw-2'>mut</span> <span class='ident'>rows</span> <span class='op'>=</span> <span class='ident'>stmt</span>.<span class='ident'>execute</span>();
+        <span class='kw'>let</span> <span class='ident'>row</span> <span class='op'>=</span> <span class='ident'>rows</span>.<span class='ident'>step</span>().<span class='ident'>unwrap</span>().<span class='ident'>unwrap</span>();
+        <span class='macro'>assert_eq</span><span class='macro'>!</span>(<span class='ident'>row</span>.<span class='ident'>column_str</span>(<span class='number'>0</span>), <span class='prelude-val'>None</span>);
+        <span class='macro'>assert</span><span class='macro'>!</span>(<span class='ident'>str</span>::<span class='ident'>from_utf8</span>(<span class='kw-2'>&amp;</span>[<span class='number'>0x45u8</span>, <span class='number'>0x46</span>, <span class='number'>0xff</span>]).<span class='ident'>is_err</span>());
+    }
+
+}
+
+<span class='comment'>// Local Variables:</span>
+<span class='comment'>// flycheck-rust-crate-root: &quot;lib.rs&quot;</span>
+<span class='comment'>// End:</span>
+</pre>
+</section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../../jquery.js"></script>
+    <script src="../../../main.js"></script>
+    
+    <script defer src="../../../search-index.js"></script>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `DatabaseConnection` struct in crate `sqlite3`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, DatabaseConnection">
+
+    <title>sqlite3::core::DatabaseConnection - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a></p><script>window.sidebarCurrent = {name: 'DatabaseConnection', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a>::<wbr><a class='struct' href=''>DatabaseConnection</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-94' class='srclink' href='../../src/sqlite3/src/core.rs.html#169-174' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct DatabaseConnection {
+    // some fields omitted
+}</pre><div class='docblock'><p>A connection to a sqlite3 database.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../sqlite3/core/struct.DatabaseConnection.html' title='sqlite3::core::DatabaseConnection'>DatabaseConnection</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-108' class='srclink' href='../../src/sqlite3/src/core.rs.html#205-356' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.new' class='method'><code>fn <a href='#method.new' class='fnname'>new</a>&lt;A:&nbsp;<a class='trait' href='../../sqlite3/core/trait.Access.html' title='sqlite3::core::Access'>Access</a>&gt;(access: A) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='struct' href='../../sqlite3/core/struct.DatabaseConnection.html' title='sqlite3::core::DatabaseConnection'>DatabaseConnection</a>&gt;</code></h4>
+<div class='docblock'><p>Given explicit access to a database, attempt to connect to it.</p>
+
+<p>Note <code>SqliteError</code> code is accompanied by (copy) of <code>sqlite3_errmsg()</code>.</p>
+</div><h4 id='method.ignore_detail' class='method'><code>fn <a href='#method.ignore_detail' class='fnname'>ignore_detail</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Opt out of copies of error message details.</p>
+</div><h4 id='method.in_memory' class='method'><code>fn <a href='#method.in_memory' class='fnname'>in_memory</a>() -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='struct' href='../../sqlite3/core/struct.DatabaseConnection.html' title='sqlite3::core::DatabaseConnection'>DatabaseConnection</a>&gt;</code></h4>
+<div class='docblock'><p>Create connection to an in-memory database.</p>
+
+<ul>
+<li>TODO: integrate sqlite3_errmsg()</li>
+</ul>
+</div><h4 id='method.prepare' class='method'><code>fn <a href='#method.prepare' class='fnname'>prepare</a>(&amp;self, sql: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a>&gt;</code></h4>
+<div class='docblock'><p>Prepare/compile an SQL statement.</p>
+</div><h4 id='method.prepare_with_offset' class='method'><code>fn <a href='#method.prepare_with_offset' class='fnname'>prepare_with_offset</a>(&amp;self, sql: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>(</a><a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a>, <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.usize.html'>usize</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>)</a>&gt;</code></h4>
+<div class='docblock'><p>Prepare/compile an SQL statement and give offset to remaining text.</p>
+
+<p><em>TODO: give caller a safe way to use the offset. Perhaps
+return a &amp;&#39;x str?</em></p>
+</div><h4 id='method.errmsg' class='method'><code>fn <a href='#method.errmsg' class='fnname'>errmsg</a>(&amp;mut self) -&gt; <a class='struct' href='https://doc.rust-lang.org/nightly/collections/string/struct.String.html' title='collections::string::String'>String</a></code></h4>
+<div class='docblock'><p>Return a copy of the latest error message.</p>
+
+<p>Return <code>&quot;&quot;</code> in case of ill-formed utf-8 or null.</p>
+
+<p><em>TODO: represent error state in types: &quot;If a prior API call
+failed but the most recent API call succeeded, the return
+value from sqlite3_errcode() is undefined.&quot;</em></p>
+
+<p>cf <code>ffi::sqlite3_errmsg</code>.</p>
+</div><h4 id='method.exec' class='method'><code>fn <a href='#method.exec' class='fnname'>exec</a>(&amp;mut self, sql: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>One-Step Query Execution Interface</p>
+
+<p>cf <a href="http://www.sqlite.org/c3ref/exec.html">sqlite3_exec</a></p>
+
+<ul>
+<li>TODO: callback support?</li>
+<li>TODO: errmsg support</li>
+</ul>
+</div><h4 id='method.changes' class='method'><code>fn <a href='#method.changes' class='fnname'>changes</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a></code></h4>
+<div class='docblock'><p>Return the number of database rows that were changed or
+inserted or deleted by the most recently completed SQL
+statement.</p>
+
+<p>cf <code>sqlite3_changes</code>.</p>
+</div><h4 id='method.busy_timeout' class='method'><code>fn <a href='#method.busy_timeout' class='fnname'>busy_timeout</a>(&amp;mut self, d: <a class='struct' href='https://doc.rust-lang.org/time/time/duration/struct.Duration.html' title='time::duration::Duration'>Duration</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Set a busy timeout and clear any previously set handler.
+If duration is zero or negative, turns off busy handler.</p>
+</div><h4 id='method.last_insert_rowid' class='method'><code>fn <a href='#method.last_insert_rowid' class='fnname'>last_insert_rowid</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a></code></h4>
+<div class='docblock'><p>Return the rowid of the most recent successful INSERT into
+a rowid table or virtual table.</p>
+
+<p>cf <code>sqlite3_last_insert_rowid</code></p>
+</div><h4 id='method.expose' class='method'><code>unsafe fn <a href='#method.expose' class='fnname'>expose</a>(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3.html' title='sqlite3::ffi::sqlite3'>sqlite3</a></code></h4>
+<div class='docblock'><p>Expose the underlying <code>sqlite3</code> struct pointer for use
+with the <code>ffi</code> module.</p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

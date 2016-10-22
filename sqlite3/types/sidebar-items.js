@@ -1,0 +1,1 @@
+initSidebarItems({"static":[["SQLITE_TIME_FMT","Format of sqlite date strings"]],"trait":[["FromSql","A trait for result values from a query."],["ToSql","Values that can be bound to parameters in prepared statements."]]});

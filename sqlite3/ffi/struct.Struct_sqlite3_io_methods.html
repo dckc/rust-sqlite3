@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Struct_sqlite3_io_methods` struct in crate `sqlite3`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Struct_sqlite3_io_methods">
+
+    <title>sqlite3::ffi::Struct_sqlite3_io_methods - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>ffi</a></p><script>window.sidebarCurrent = {name: 'Struct_sqlite3_io_methods', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>ffi</a>::<wbr><a class='struct' href=''>Struct_sqlite3_io_methods</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-490' class='srclink' href='../../src/sqlite3/src/ffi.rs.html#27-111' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Struct_sqlite3_io_methods {
+    pub iVersion: c_int,
+    pub xClose: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;,
+    pub xRead: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void, arg3: c_int, arg4: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;,
+    pub xWrite: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*const </a>c_void, arg3: c_int, arg4: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;,
+    pub xTruncate: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;,
+    pub xSync: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;,
+    pub xFileSize: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;,
+    pub xLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;,
+    pub xUnlock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;,
+    pub xCheckReservedLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_int) -&gt; c_int&gt;,
+    pub xFileControl: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;,
+    pub xSectorSize: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;,
+    pub xDeviceCharacteristics: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;,
+    pub xShmMap: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: c_int, arg4: c_int, arg5: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;,
+    pub xShmLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: c_int, arg4: c_int) -&gt; c_int&gt;,
+    pub xShmBarrier: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>)&gt;,
+    pub xShmUnmap: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;,
+    pub xFetch: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>, arg3: c_int, arg4: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;,
+    pub xUnfetch: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>, arg3: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;,
+}</pre><h2 class='fields'>Fields</h2><span id='structfield.iVersion' class='structfield'><code>iVersion: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.xClose' class='structfield'><code>xClose: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xRead' class='structfield'><code>xRead: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void, arg3: c_int, arg4: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xWrite' class='structfield'><code>xWrite: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*const </a>c_void, arg3: c_int, arg4: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xTruncate' class='structfield'><code>xTruncate: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xSync' class='structfield'><code>xSync: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xFileSize' class='structfield'><code>xFileSize: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xLock' class='structfield'><code>xLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xUnlock' class='structfield'><code>xUnlock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xCheckReservedLock' class='structfield'><code>xCheckReservedLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xFileControl' class='structfield'><code>xFileControl: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xSectorSize' class='structfield'><code>xSectorSize: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xDeviceCharacteristics' class='structfield'><code>xDeviceCharacteristics: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xShmMap' class='structfield'><code>xShmMap: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: c_int, arg4: c_int, arg5: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xShmLock' class='structfield'><code>xShmLock: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int, arg3: c_int, arg4: c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xShmBarrier' class='structfield'><code>xShmBarrier: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>)&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xShmUnmap' class='structfield'><code>xShmUnmap: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: c_int) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xFetch' class='structfield'><code>xFetch: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>, arg3: c_int, arg4: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span><span id='structfield.xUnfetch' class='structfield'><code>xUnfetch: <a class='enum' href='https://doc.rust-lang.org/nightly/core/option/enum.Option.html' title='core::option::Option'>Option</a>&lt;extern fn(arg1: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_file.html' title='sqlite3::ffi::sqlite3_file'>sqlite3_file</a>, arg2: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>, arg3: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_void) -&gt; c_int&gt;</code>
+                           </span><span class='stab '></span></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

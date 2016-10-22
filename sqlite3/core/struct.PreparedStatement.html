@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `PreparedStatement` struct in crate `sqlite3`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, PreparedStatement">
+
+    <title>sqlite3::core::PreparedStatement - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a></p><script>window.sidebarCurrent = {name: 'PreparedStatement', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>core</a>::<wbr><a class='struct' href=''>PreparedStatement</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-171' class='srclink' href='../../src/sqlite3/src/core.rs.html#376-380' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct PreparedStatement {
+    // some fields omitted
+}</pre><div class='docblock'><p>A prepared statement.</p>
+</div><h2 id='methods'>Methods</h2><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-179' class='srclink' href='../../src/sqlite3/src/core.rs.html#405-416' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.execute' class='method'><code>fn <a href='#method.execute' class='fnname'>execute</a>(&amp;mut self) -&gt; <a class='struct' href='../../sqlite3/core/struct.ResultSet.html' title='sqlite3::core::ResultSet'>ResultSet</a></code></h4>
+<div class='docblock'><p>Begin executing a statement.</p>
+
+<p>An sqlite &quot;row&quot; only lasts until the next call to
+<code>ffi::sqlite3_step()</code>, so <code>ResultSet</code> has a corresponding
+lifetime constraint, which prevents it <code>ResultSet</code> from
+implementing the <code>Iterator</code> trait. See the <code>Query</code> trait
+for and <code>Iterator</code> over query results.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-182' class='srclink' href='../../src/sqlite3/src/core.rs.html#422-526' title='goto source code'>[src]</a></span></h3>
+<div class='docblock'><p>A compiled prepared statement that may take parameters.
+<strong>Note:</strong> &quot;The leftmost SQL parameter has an index of 1.&quot;<a href="http://www.sqlite.org/c3ref/bind_blob.html">1</a></p>
+</div><div class='impl-items'><h4 id='method.ignore_detail' class='method'><code>fn <a href='#method.ignore_detail' class='fnname'>ignore_detail</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Opt out of copies of error message details.</p>
+</div><h4 id='method.bind_null' class='method'><code>fn <a href='#method.bind_null' class='fnname'>bind_null</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind null to a statement parameter.</p>
+</div><h4 id='method.bind_int' class='method'><code>fn <a href='#method.bind_int' class='fnname'>bind_int</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i32.html'>i32</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind an int to a statement parameter.</p>
+</div><h4 id='method.bind_int64' class='method'><code>fn <a href='#method.bind_int64' class='fnname'>bind_int64</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.i64.html'>i64</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind an int64 to a statement parameter.</p>
+</div><h4 id='method.bind_double' class='method'><code>fn <a href='#method.bind_double' class='fnname'>bind_double</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.f64.html'>f64</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind a double to a statement parameter.</p>
+</div><h4 id='method.bind_text' class='method'><code>fn <a href='#method.bind_text' class='fnname'>bind_text</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>, value: &amp;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.str.html'>str</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind a (copy of a) str to a statement parameter.</p>
+
+<p><em>TODO: support binding without copying strings, blobs</em></p>
+</div><h4 id='method.bind_blob' class='method'><code>fn <a href='#method.bind_blob' class='fnname'>bind_blob</a>(&amp;mut self, i: <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a>, value: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u8.html'>u8</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Bind a (copy of a) byte sequence to a statement parameter.</p>
+
+<p><em>TODO: support binding without copying strings, blobs</em></p>
+</div><h4 id='method.clear_bindings' class='method'><code>fn <a href='#method.clear_bindings' class='fnname'>clear_bindings</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>Clear all parameter bindings.</p>
+</div><h4 id='method.bind_parameter_count' class='method'><code>fn <a href='#method.bind_parameter_count' class='fnname'>bind_parameter_count</a>(&amp;mut self) -&gt; <a class='type' href='../../sqlite3/core/type.ParamIx.html' title='sqlite3::core::ParamIx'>ParamIx</a></code></h4>
+<div class='docblock'><p>Return the number of SQL parameters.
+If parameters of the ?NNN form are used, there may be gaps in the list.</p>
+</div><h4 id='method.expose' class='method'><code>unsafe fn <a href='#method.expose' class='fnname'>expose</a>(&amp;mut self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='type' href='../../sqlite3/ffi/type.sqlite3_stmt.html' title='sqlite3::ffi::sqlite3_stmt'>sqlite3_stmt</a></code></h4>
+<div class='docblock'><p>Expose the underlying <code>sqlite3_stmt</code> struct pointer for use
+with the <code>ffi</code> module.</p>
+</div><h4 id='method.changes' class='method'><code>fn <a href='#method.changes' class='fnname'>changes</a>(&amp;self) -&gt; <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a></code></h4>
+<div class='docblock'><p>Return the number of database rows that were changed or
+inserted or deleted by this statement if it is the most
+recently run on its database connection.</p>
+
+<p>cf <code>sqlite3_changes</code>.</p>
+</div></div><h2 id='implementations'>Trait Implementations</h2><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html' title='core::ops::Drop'>Drop</a> for <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-175' class='srclink' href='../../src/sqlite3/src/core.rs.html#382-398' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.drop' class='method'><code>fn <a href='https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop' class='fnname'>drop</a>(&amp;mut self)</code></h4>
+<div class='docblock'><p>A method called when the value goes out of scope. <a href="https://doc.rust-lang.org/nightly/core/ops/trait.Drop.html#tymethod.drop">Read more</a></p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl <a class='trait' href='../../sqlite3/trait.StatementUpdate.html' title='sqlite3::StatementUpdate'>StatementUpdate</a> for <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1786' class='srclink' href='../../src/sqlite3/src/lib.rs.html#126-154' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.update' class='method'><code>fn <a href='../../sqlite3/trait.StatementUpdate.html#tymethod.update' class='fnname'>update</a>(&amp;mut self, values: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a>&amp;<a class='trait' href='../../sqlite3/types/trait.ToSql.html' title='sqlite3::types::ToSql'>ToSql</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.u64.html'>u64</a>&gt;</code></h4>
+<div class='docblock'><p>Execute a statement after binding any parameters.</p>
+
+<p>When the statement is done, The <a href="http://www.sqlite.org/c3ref/changes.html">number of rows
+modified</a> is reported.</p>
+
+<p>Fail with <code>Err(SQLITE_MISUSE)</code> in case the statement results
+in any any rows (e.g. a <code>SELECT</code> rather than <code>INSERT</code> or
+<code>UPDATE</code>).</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;F&gt; <a class='trait' href='../../sqlite3/trait.QueryEach.html' title='sqlite3::QueryEach'>QueryEach</a>&lt;F&gt; for <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a> <span class='where'>where F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;mut <a class='struct' href='../../sqlite3/core/struct.ResultRow.html' title='sqlite3::core::ResultRow'>ResultRow</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</span></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1806' class='srclink' href='../../src/sqlite3/src/lib.rs.html#165-183' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.query_each' class='method'><code>fn <a href='../../sqlite3/trait.QueryEach.html#tymethod.query_each' class='fnname'>query_each</a>(&amp;mut self, values: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a>&amp;<a class='trait' href='../../sqlite3/types/trait.ToSql.html' title='sqlite3::types::ToSql'>ToSql</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, each_row: &amp;mut F) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.tuple.html'>()</a>&gt;</code></h4>
+<div class='docblock'><p>Process rows from a query after binding parameters.</p>
+
+<p>For call <code>each_row(row)</code> for each resulting step,
+exiting on <code>Err</code>.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;F,&nbsp;A&gt; <a class='trait' href='../../sqlite3/trait.QueryFold.html' title='sqlite3::QueryFold'>QueryFold</a>&lt;F,&nbsp;A&gt; for <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a> <span class='where'>where F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.Fn.html' title='core::ops::Fn'>Fn</a>(&amp;mut <a class='struct' href='../../sqlite3/core/struct.ResultRow.html' title='sqlite3::core::ResultRow'>ResultRow</a>, A) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;A&gt;</span></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1829' class='srclink' href='../../src/sqlite3/src/lib.rs.html#195-211' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.query_fold' class='method'><code>fn <a href='../../sqlite3/trait.QueryFold.html#tymethod.query_fold' class='fnname'>query_fold</a>(&amp;mut self, values: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a>&amp;<a class='trait' href='../../sqlite3/types/trait.ToSql.html' title='sqlite3::types::ToSql'>ToSql</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, init: A, f: F) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;A&gt;</code></h4>
+<div class='docblock'><p>Fold rows from a query after binding parameters.</p>
+</div></div><h3 class='impl'><span class='in-band'><code>impl&lt;F,&nbsp;T&gt; <a class='trait' href='../../sqlite3/trait.Query.html' title='sqlite3::Query'>Query</a>&lt;F,&nbsp;T&gt; for <a class='struct' href='../../sqlite3/core/struct.PreparedStatement.html' title='sqlite3::core::PreparedStatement'>PreparedStatement</a> <span class='where'>where F: <a class='trait' href='https://doc.rust-lang.org/nightly/core/ops/trait.FnMut.html' title='core::ops::FnMut'>FnMut</a>(&amp;mut <a class='struct' href='../../sqlite3/core/struct.ResultRow.html' title='sqlite3::core::ResultRow'>ResultRow</a>) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;T&gt;</span></code></span><span class='out-of-band'><div class='ghost'></div><a id='src-1855' class='srclink' href='../../src/sqlite3/src/lib.rs.html#231-245' title='goto source code'>[src]</a></span></h3>
+<div class='impl-items'><h4 id='method.query' class='method'><code>fn <a href='../../sqlite3/trait.Query.html#tymethod.query' class='fnname'>query</a>&lt;'stmt&gt;(&amp;'stmt mut self, values: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>&amp;[</a>&amp;<a class='trait' href='../../sqlite3/types/trait.ToSql.html' title='sqlite3::types::ToSql'>ToSql</a><a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.slice.html'>]</a>, txform: F) -&gt; <a class='type' href='../../sqlite3/type.SqliteResult.html' title='sqlite3::SqliteResult'>SqliteResult</a>&lt;<a class='struct' href='../../sqlite3/struct.QueryResults.html' title='sqlite3::QueryResults'>QueryResults</a>&lt;'stmt,&nbsp;T,&nbsp;F&gt;&gt;</code></h4>
+<div class='docblock'><p>Iterate over query results after binding parameters. <a href="../../sqlite3/trait.Query.html#tymethod.query">Read more</a></p>
+</div></div></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>

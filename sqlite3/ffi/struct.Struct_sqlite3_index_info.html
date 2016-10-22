@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="generator" content="rustdoc">
+    <meta name="description" content="API documentation for the Rust `Struct_sqlite3_index_info` struct in crate `sqlite3`.">
+    <meta name="keywords" content="rust, rustlang, rust-lang, Struct_sqlite3_index_info">
+
+    <title>sqlite3::ffi::Struct_sqlite3_index_info - Rust</title>
+
+    <link rel="stylesheet" type="text/css" href="../../rustdoc.css">
+    <link rel="stylesheet" type="text/css" href="../../main.css">
+    
+
+    
+    
+</head>
+<body class="rustdoc">
+    <!--[if lte IE 8]>
+    <div class="warning">
+        This old browser is unsupported and will most likely display funky
+        things.
+    </div>
+    <![endif]-->
+
+    
+
+    <nav class="sidebar">
+        
+        <p class='location'><a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>ffi</a></p><script>window.sidebarCurrent = {name: 'Struct_sqlite3_index_info', ty: 'struct', relpath: ''};</script><script defer src="sidebar-items.js"></script>
+    </nav>
+
+    <nav class="sub">
+        <form class="search-form js-only">
+            <div class="search-container">
+                <input class="search-input" name="search"
+                       autocomplete="off"
+                       placeholder="Click or press ‘S’ to search, ‘?’ for more options…"
+                       type="search">
+            </div>
+        </form>
+    </nav>
+
+    <section id='main' class="content struct">
+<h1 class='fqn'><span class='in-band'>Struct <a href='../index.html'>sqlite3</a>::<wbr><a href='index.html'>ffi</a>::<wbr><a class='struct' href=''>Struct_sqlite3_index_info</a></span><span class='out-of-band'><span id='render-detail'>
+                   <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">
+                       [<span class='inner'>&#x2212;</span>]
+                   </a>
+               </span><a id='src-736' class='srclink' href='../../src/sqlite3/src/ffi.rs.html#346-358' title='goto source code'>[src]</a></span></h1>
+<pre class='rust struct'>pub struct Struct_sqlite3_index_info {
+    pub nConstraint: c_int,
+    pub aConstraint: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_constraint.html' title='sqlite3::ffi::Struct_sqlite3_index_constraint'>Struct_sqlite3_index_constraint</a>,
+    pub nOrderBy: c_int,
+    pub aOrderBy: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_orderby.html' title='sqlite3::ffi::Struct_sqlite3_index_orderby'>Struct_sqlite3_index_orderby</a>,
+    pub aConstraintUsage: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_constraint_usage.html' title='sqlite3::ffi::Struct_sqlite3_index_constraint_usage'>Struct_sqlite3_index_constraint_usage</a>,
+    pub idxNum: c_int,
+    pub idxStr: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_char,
+    pub needToFreeIdxStr: c_int,
+    pub orderByConsumed: c_int,
+    pub estimatedCost: c_double,
+    pub estimatedRows: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a>,
+}</pre><h2 class='fields'>Fields</h2><span id='structfield.nConstraint' class='structfield'><code>nConstraint: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.aConstraint' class='structfield'><code>aConstraint: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_constraint.html' title='sqlite3::ffi::Struct_sqlite3_index_constraint'>Struct_sqlite3_index_constraint</a></code>
+                           </span><span class='stab '></span><span id='structfield.nOrderBy' class='structfield'><code>nOrderBy: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.aOrderBy' class='structfield'><code>aOrderBy: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_orderby.html' title='sqlite3::ffi::Struct_sqlite3_index_orderby'>Struct_sqlite3_index_orderby</a></code>
+                           </span><span class='stab '></span><span id='structfield.aConstraintUsage' class='structfield'><code>aConstraintUsage: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a><a class='struct' href='../../sqlite3/ffi/struct.Struct_sqlite3_index_constraint_usage.html' title='sqlite3::ffi::Struct_sqlite3_index_constraint_usage'>Struct_sqlite3_index_constraint_usage</a></code>
+                           </span><span class='stab '></span><span id='structfield.idxNum' class='structfield'><code>idxNum: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.idxStr' class='structfield'><code>idxStr: <a class='primitive' href='https://doc.rust-lang.org/nightly/std/primitive.pointer.html'>*mut </a>c_char</code>
+                           </span><span class='stab '></span><span id='structfield.needToFreeIdxStr' class='structfield'><code>needToFreeIdxStr: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.orderByConsumed' class='structfield'><code>orderByConsumed: c_int</code>
+                           </span><span class='stab '></span><span id='structfield.estimatedCost' class='structfield'><code>estimatedCost: c_double</code>
+                           </span><span class='stab '></span><span id='structfield.estimatedRows' class='structfield'><code>estimatedRows: <a class='type' href='../../sqlite3/ffi/type.sqlite3_int64.html' title='sqlite3::ffi::sqlite3_int64'>sqlite3_int64</a></code>
+                           </span><span class='stab '></span></section>
+    <section id='search' class="content hidden"></section>
+
+    <section class="footer"></section>
+
+    <aside id="help" class="hidden">
+        <div>
+            <h1 class="hidden">Help</h1>
+
+            <div class="shortcuts">
+                <h2>Keyboard Shortcuts</h2>
+
+                <dl>
+                    <dt>?</dt>
+                    <dd>Show this help dialog</dd>
+                    <dt>S</dt>
+                    <dd>Focus the search field</dd>
+                    <dt>&larrb;</dt>
+                    <dd>Move up in search results</dd>
+                    <dt>&rarrb;</dt>
+                    <dd>Move down in search results</dd>
+                    <dt>&#9166;</dt>
+                    <dd>Go to active search result</dd>
+                    <dt>+</dt>
+                    <dd>Collapse/expand all sections</dd>
+                </dl>
+            </div>
+
+            <div class="infos">
+                <h2>Search Tricks</h2>
+
+                <p>
+                    Prefix searches with a type followed by a colon (e.g.
+                    <code>fn:</code>) to restrict the search to a given type.
+                </p>
+
+                <p>
+                    Accepted types are: <code>fn</code>, <code>mod</code>,
+                    <code>struct</code>, <code>enum</code>,
+                    <code>trait</code>, <code>type</code>, <code>macro</code>,
+                    and <code>const</code>.
+                </p>
+
+                <p>
+                    Search functions by type signature (e.g.
+                    <code>vec -> usize</code> or <code>* -> vec</code>)
+                </p>
+            </div>
+        </div>
+    </aside>
+
+    
+
+    <script>
+        window.rootPath = "../../";
+        window.currentCrate = "sqlite3";
+        window.playgroundUrl = "";
+    </script>
+    <script src="../../jquery.js"></script>
+    <script src="../../main.js"></script>
+    
+    <script defer src="../../search-index.js"></script>
+</body>
+</html>
