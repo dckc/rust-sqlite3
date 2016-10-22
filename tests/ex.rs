@@ -39,7 +39,7 @@ fn io() -> SqliteResult<Vec<Person>> {
 
     let me = Person {
         id: 0,
-        name: format!("Dan"),
+        name: "Dan".to_owned(),
         time_created: time::get_time(),
     };
     {

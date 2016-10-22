@@ -247,7 +247,7 @@ impl DatabaseConnection {
     }
 
     /// Prepare/compile an SQL statement.
-    pub fn prepare<'db: 'st, 'st>(&'db self, sql: &str) -> SqliteResult<PreparedStatement> {
+    pub fn prepare(&self, sql: &str) -> SqliteResult<PreparedStatement> {
         match self.prepare_with_offset(sql) {
             Ok((cur, _)) => Ok(cur),
             Err(e) => Err(e),
@@ -258,9 +258,7 @@ impl DatabaseConnection {
     ///
     /// *TODO: give caller a safe way to use the offset. Perhaps
     /// return a &'x str?*
-    pub fn prepare_with_offset<'db: 'st, 'st>(&'db self,
-                                              sql: &str)
-                                              -> SqliteResult<(PreparedStatement, usize)> {
+    pub fn prepare_with_offset(&self, sql: &str) -> SqliteResult<(PreparedStatement, usize)> {
         let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
         let z_sql = str_charstar(sql);
@@ -359,8 +357,8 @@ impl DatabaseConnection {
 
 
 /// Convert from sqlite3 API utf8 to rust str.
-fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
-    if *utf_bytes == ptr::null() {
+fn charstar_str(utf_bytes: &*const c_char) -> Option<&str> {
+    if utf_bytes.is_null() {
         return None;
     }
     let c_str = unsafe { CStr::from_ptr(*utf_bytes) };
@@ -370,7 +368,7 @@ fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
 
 /// Convenience function to get a `CString` from a str
 #[inline(always)]
-pub fn str_charstar<'a>(s: &'a str) -> std_ffi::CString {
+pub fn str_charstar(s: &str) -> std_ffi::CString {
     std_ffi::CString::new(s.as_bytes()).unwrap_or(std_ffi::CString::new("").unwrap())
 }
 
@@ -438,7 +436,7 @@ impl PreparedStatement {
     }
 
     fn get_detail(&mut self) -> Option<String> {
-        self.detail_db().map(|db| DatabaseConnection::_errmsg(db))
+        self.detail_db().map(DatabaseConnection::_errmsg)
     }
 
     /// Bind null to a statement parameter.
@@ -651,7 +649,7 @@ impl<'res, 'row> ResultRow<'res, 'row> {
     }
 
     /// Get `Option<&str>` (aka text) value of a column.
-    pub fn column_str<'a>(&'a self, col: ColIx) -> Option<&'a str> {
+    pub fn column_str(&self, col: ColIx) -> Option<&str> {
         self.column_slice(col).and_then(|slice| str::from_utf8(slice).ok())
     }
 
@@ -661,11 +659,11 @@ impl<'res, 'row> ResultRow<'res, 'row> {
     }
 
     /// Get `Option<&[u8]>` (aka blob) value of a column.
-    pub fn column_slice<'a>(&'a self, col: ColIx) -> Option<&'a [u8]> {
+    pub fn column_slice(&self, col: ColIx) -> Option<&[u8]> {
         let stmt = self.rows.statement.stmt;
         let i_col = col as c_int;
         let bs = unsafe { ffi::sqlite3_column_blob(stmt, i_col) } as *const ::libc::c_uchar;
-        if bs == ptr::null() {
+        if bs.is_null() {
             return None;
         }
         let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) } as usize;
@@ -689,7 +687,7 @@ pub fn decode_result(result: c_int,
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
-        let detail = detail_db.map(|db| DatabaseConnection::_errmsg(db));
+        let detail = detail_db.map(DatabaseConnection::_errmsg);
         Err(error_result(result, desc, detail))
     }
 }

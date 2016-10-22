@@ -35,22 +35,21 @@ fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
         let mut stmt = try!(conn.prepare(
             "select * from items"));
         let mut results = stmt.execute();
-        let res = match results.step() {
+        match results.step() {
             Ok(Some(ref mut row1)) => {
                 let id = row1.column_int(0);
                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
                 let price = row1.column_int(2);
 
                 assert_eq!(id, 1);
-                assert_eq!(desc_opt, format!("stuff"));
+                assert_eq!(desc_opt, "stuff".to_owned());
                 assert_eq!(price, 10);
 
                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
             },
             Err(oops) => panic!(oops),
             Ok(None) => panic!("where did our row go?")
-        };
-        res
+        }
     }
 }
 

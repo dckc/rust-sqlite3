@@ -87,7 +87,7 @@ impl<T: FromSql + Clone> FromSql for Option<T> {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<Option<T>> {
         match row.column_type(col) {
             SQLITE_NULL => Ok(None),
-            _ => FromSql::from_sql(row, col).map(|x| Some(x)),
+            _ => FromSql::from_sql(row, col).map(Some),
         }
     }
 }
@@ -101,7 +101,7 @@ impl ToSql for String {
 
 impl FromSql for String {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<String> {
-        Ok(row.column_text(col).unwrap_or(String::new()))
+        Ok(row.column_text(col).unwrap_or_else(String::new))
     }
 }
 
@@ -113,7 +113,7 @@ impl<'a> ToSql for &'a [u8] {
 
 impl FromSql for Vec<u8> {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<Vec<u8>> {
-        Ok(row.column_blob(col).unwrap_or(Vec::new()))
+        Ok(row.column_blob(col).unwrap_or_else(Vec::new))
     }
 }
 
@@ -127,7 +127,7 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 
 impl FromSql for time::Tm {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<time::Tm> {
-        let txt = row.column_text(col).unwrap_or(String::new());
+        let txt = row.column_text(col).unwrap_or_else(String::new);
         Ok(try!(time::strptime(txt.as_ref(), SQLITE_TIME_FMT)))
     }
 }
