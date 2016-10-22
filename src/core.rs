@@ -368,7 +368,7 @@ fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
     Some(unsafe { str::from_utf8_unchecked(c_str.to_bytes()) })
 }
 
-/// Convenience function to get a CString from a str
+/// Convenience function to get a `CString` from a str
 #[inline(always)]
 pub fn str_charstar<'a>(s: &'a str) -> std_ffi::CString {
     std_ffi::CString::new(s.as_bytes()).unwrap_or(std_ffi::CString::new("").unwrap())

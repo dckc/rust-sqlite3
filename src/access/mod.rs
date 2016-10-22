@@ -23,7 +23,7 @@ pub mod flags;
 
 /// Open a database by filename.
 ///
-/// *TODO: test for "Note that sqlite3_open() can be used to either
+/// *TODO: test for "Note that `sqlite3_open()` can be used to either
 /// open existing database files or to create and open new database
 /// files."*
 ///

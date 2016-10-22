@@ -16,7 +16,7 @@ pub trait ToSql {
 ///
 /// cf [sqlite3 result values][column].
 ///
-/// *inspired by sfackler's FromSql (and some haskell bindings?)*
+/// *inspired by sfackler's `FromSql` (and some haskell bindings?)*
 ///
 /// [column]: http://www.sqlite.org/c3ref/column_blob.html
 ///
