@@ -7,25 +7,25 @@
 //!
 //! ```rust
 //! extern crate sqlite3;
-//! 
+//!
 //! use sqlite3::{
 //!     DatabaseConnection,
 //!     SqliteResult,
 //! };
-//! 
+//!
 //! fn convenience_exec() -> SqliteResult<DatabaseConnection> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//! 
+//!
 //!     try!(conn.exec("
 //!        create table items (
 //!                    id integer,
 //!                    description varchar(40),
 //!                    price integer
 //!                    )"));
-//! 
+//!
 //!     Ok(conn)
 //! }
-//! 
+//!
 //! fn typical_usage(conn: &mut DatabaseConnection) -> SqliteResult<String> {
 //!     {
 //!         let mut stmt = try!(conn.prepare(
@@ -48,11 +48,11 @@
 //!                 let id = row1.column_int(0);
 //!                 let desc_opt = row1.column_text(1).expect("desc_opt should be non-null");
 //!                 let price = row1.column_int(2);
-//! 
+//!
 //!                 assert_eq!(id, 1);
 //!                 assert_eq!(desc_opt, format!("stuff"));
 //!                 assert_eq!(price, 10);
-//! 
+//!
 //!                 Ok(format!("row: {}, {}, {}", id, desc_opt, price))
 //!             },
 //!             Err(oops) => panic!(oops),
@@ -60,7 +60,7 @@
 //!         }
 //!     }
 //! }
-//! 
+//!
 //! pub fn main() {
 //!     match convenience_exec() {
 //!         Ok(ref mut db) => {
@@ -110,11 +110,7 @@ use time::Duration;
 use self::SqliteOk::SQLITE_OK;
 use self::Step::{SQLITE_ROW, SQLITE_DONE};
 
-pub use super::{
-    SqliteError,
-    SqliteErrorCode,
-    SqliteResult,
-};
+pub use super::{SqliteError, SqliteErrorCode, SqliteResult};
 
 pub use super::ColumnType;
 pub use super::ColumnType::SQLITE_NULL;
@@ -172,9 +168,9 @@ impl Drop for Database {
 /// A connection to a sqlite3 database.
 pub struct DatabaseConnection {
     db: Rc<Database>,
-    
+
     // whether to copy errmsg() to error detail
-    detailed: bool
+    detailed: bool,
 }
 
 
@@ -198,10 +194,10 @@ fn maybe<T>(choice: bool, x: T) -> Option<T> {
 use std::ffi::NulError;
 impl From<NulError> for SqliteError {
     fn from(_: NulError) -> SqliteError {
-        SqliteError{
+        SqliteError {
             kind: SqliteErrorCode::SQLITE_MISUSE,
             desc: "Sql string contained an internal 0 byte",
-            detail: None
+            detail: None,
         }
     }
 }
@@ -215,7 +211,7 @@ impl DatabaseConnection {
         let result = access.open(&mut db);
         match decode_result(result, "sqlite3_open_v2", Some(db)) {
             Ok(()) => Ok(DatabaseConnection {
-                db: Rc::new(Database { handle: db}), 
+                db: Rc::new(Database { handle: db}),
                 detailed: true,
             }),
             Err(err) => {
@@ -251,10 +247,10 @@ impl DatabaseConnection {
     }
 
     /// Prepare/compile an SQL statement.
-    pub fn prepare<'db:'st, 'st>(&'db self, sql: &str) -> SqliteResult<PreparedStatement> {
+    pub fn prepare<'db: 'st, 'st>(&'db self, sql: &str) -> SqliteResult<PreparedStatement> {
         match self.prepare_with_offset(sql) {
             Ok((cur, _)) => Ok(cur),
-            Err(e) => Err(e)
+            Err(e) => Err(e),
         }
     }
 
@@ -262,19 +258,28 @@ impl DatabaseConnection {
     ///
     /// *TODO: give caller a safe way to use the offset. Perhaps
     /// return a &'x str?*
-    pub fn prepare_with_offset<'db:'st, 'st>(&'db self, sql: &str)
-                                    -> SqliteResult<(PreparedStatement, usize)> {
+    pub fn prepare_with_offset<'db: 'st, 'st>(&'db self,
+                                              sql: &str)
+                                              -> SqliteResult<(PreparedStatement, usize)> {
         let mut stmt = ptr::null_mut();
         let mut tail = ptr::null();
         let z_sql = str_charstar(sql);
         let n_byte = sql.len() as c_int;
-        let r = unsafe { ffi::sqlite3_prepare_v2(self.db.handle, z_sql.as_ptr(), n_byte, &mut stmt, &mut tail) };
-        match decode_result(r, "sqlite3_prepare_v2", maybe(self.detailed, self.db.handle)) {
+        let r = unsafe {
+            ffi::sqlite3_prepare_v2(self.db.handle, z_sql.as_ptr(), n_byte, &mut stmt, &mut tail)
+        };
+        match decode_result(r,
+                            "sqlite3_prepare_v2",
+                            maybe(self.detailed, self.db.handle)) {
             Ok(()) => {
+                let ps = PreparedStatement {
+                    stmt: stmt,
+                    db: self.db.clone(),
+                    detailed: self.detailed };
                 let offset = tail as usize - z_sql.as_ptr() as usize;
-                Ok((PreparedStatement { stmt: stmt , db: self.db.clone(), detailed: self.detailed }, offset))
-            },
-            Err(code) => Err(code)
+                Ok((ps, offset))
+            }
+            Err(code) => Err(code),
         }
     }
 
@@ -307,8 +312,11 @@ impl DatabaseConnection {
     pub fn exec(&mut self, sql: &str) -> SqliteResult<()> {
         let c_sql = try!(std_ffi::CString::new(sql.as_bytes()));
         let result = unsafe {
-            ffi::sqlite3_exec(self.db.handle, c_sql.as_ptr(), None,
-                              ptr::null_mut(), ptr::null_mut())
+            ffi::sqlite3_exec(self.db.handle,
+                              c_sql.as_ptr(),
+                              None,
+                              ptr::null_mut(),
+                              ptr::null_mut())
         };
         decode_result(result, "sqlite3_exec", maybe(self.detailed, self.db.handle))
     }
@@ -329,7 +337,9 @@ impl DatabaseConnection {
     pub fn busy_timeout(&mut self, d: Duration) -> SqliteResult<()> {
         let ms = d.num_milliseconds() as i32;
         let result = unsafe { ffi::sqlite3_busy_timeout(self.db.handle, ms) };
-        decode_result(result, "sqlite3_busy_timeout", maybe(self.detailed, self.db.handle))
+        decode_result(result,
+                      "sqlite3_busy_timeout",
+                      maybe(self.detailed, self.db.handle))
     }
 
     /// Return the rowid of the most recent successful INSERT into
@@ -354,8 +364,8 @@ fn charstar_str<'a>(utf_bytes: &'a *const c_char) -> Option<&'a str> {
         return None;
     }
     let c_str = unsafe { CStr::from_ptr(*utf_bytes) };
-    
-    Some( unsafe { str::from_utf8_unchecked(c_str.to_bytes()) } )
+
+    Some(unsafe { str::from_utf8_unchecked(c_str.to_bytes()) })
 }
 
 /// Convenience function to get a CString from a str
@@ -412,7 +422,6 @@ impl PreparedStatement {
 ///
 /// [1]: http://www.sqlite.org/c3ref/bind_blob.html
 impl PreparedStatement {
-
     /// Opt out of copies of error message details.
     pub fn ignore_detail(&mut self) {
         self.detailed = false;
@@ -435,7 +444,7 @@ impl PreparedStatement {
     /// Bind null to a statement parameter.
     pub fn bind_null(&mut self, i: ParamIx) -> SqliteResult<()> {
         let ix = i as c_int;
-        let r = unsafe { ffi::sqlite3_bind_null(self.stmt, ix ) };
+        let r = unsafe { ffi::sqlite3_bind_null(self.stmt, ix) };
         decode_result(r, "sqlite3_bind_null", self.detail_db())
     }
 
@@ -505,7 +514,7 @@ impl PreparedStatement {
     pub unsafe fn expose(&mut self) -> *mut ffi::sqlite3_stmt {
         self.stmt
     }
-    
+
     /// Return the number of database rows that were changed or
     /// inserted or deleted by this statement if it is the most
     /// recently run on its database connection.
@@ -547,24 +556,22 @@ impl<'res> Drop for ResultSet<'res> {
 }
 
 
-impl<'res:'row, 'row> ResultSet<'res> {
+impl<'res: 'row, 'row> ResultSet<'res> {
     /// Execute the next step of a prepared statement.
     pub fn step(&'row mut self) -> SqliteResult<Option<ResultRow<'res, 'row>>> {
         let result = unsafe { ffi::sqlite3_step(self.statement.stmt) };
         match Step::from_i32(result) {
-            Some(SQLITE_ROW) => {
-                Ok(Some(ResultRow{ rows: self }))
-            },
+            Some(SQLITE_ROW) => Ok(Some(ResultRow { rows: self })),
             Some(SQLITE_DONE) => Ok(None),
-            None => Err(error_result(result, "step", self.statement.get_detail()))
+            None => Err(error_result(result, "step", self.statement.get_detail())),
         }
     }
 }
 
 
 /// Access to columns of a row.
-pub struct ResultRow<'res:'row, 'row> {
-    rows: &'row mut ResultSet<'res>
+pub struct ResultRow<'res: 'row, 'row> {
+    rows: &'row mut ResultSet<'res>,
 }
 
 /// Column index for accessing parts of a row.
@@ -580,7 +587,6 @@ pub type ColIx = u32;
 ///
 /// [1]: http://www.sqlite.org/c3ref/column_blob.html
 impl<'res, 'row> ResultRow<'res, 'row> {
-
     /// cf `sqlite3_column_count`
     ///
     /// *TODO: consider returning Option<uint>
@@ -603,7 +609,7 @@ impl<'res, 'row> ResultRow<'res, 'row> {
         let result = unsafe { ffi::sqlite3_column_name(stmt, n) };
         match charstar_str(&result) {
             Some(name) => f(name),
-            None => default
+            None => default,
         }
     }
 
@@ -646,7 +652,7 @@ impl<'res, 'row> ResultRow<'res, 'row> {
 
     /// Get `Option<&str>` (aka text) value of a column.
     pub fn column_str<'a>(&'a self, col: ColIx) -> Option<&'a str> {
-        self.column_slice(col).and_then(|slice| str::from_utf8(slice).ok() )
+        self.column_slice(col).and_then(|slice| str::from_utf8(slice).ok())
     }
 
     /// Get `Option<Vec<u8>>` (aka blob) value of a column.
@@ -663,7 +669,7 @@ impl<'res, 'row> ResultRow<'res, 'row> {
             return None;
         }
         let len = unsafe { ffi::sqlite3_column_bytes(stmt, i_col) } as usize;
-        Some( unsafe { slice::from_raw_parts(bs, len) } )
+        Some(unsafe { slice::from_raw_parts(bs, len) })
     }
 }
 
@@ -676,11 +682,10 @@ impl<'res, 'row> ResultRow<'res, 'row> {
 /// # Panic
 ///
 /// Panics if result is not a SQLITE error code.
-pub fn decode_result(
-    result: c_int,
-    desc: &'static str,
-    detail_db: Option<*mut ffi::sqlite3>,
-    ) -> SqliteResult<()> {
+pub fn decode_result(result: c_int,
+                     desc: &'static str,
+                     detail_db: Option<*mut ffi::sqlite3>)
+                     -> SqliteResult<()> {
     if result == SQLITE_OK as c_int {
         Ok(())
     } else {
@@ -690,15 +695,11 @@ pub fn decode_result(
 }
 
 
-fn error_result(
-    result: c_int,
-    desc: &'static str,
-    detail: Option<String>
-    ) -> SqliteError {
+fn error_result(result: c_int, desc: &'static str, detail: Option<String>) -> SqliteError {
     SqliteError {
         kind: SqliteErrorCode::from_i32(result).unwrap(),
         desc: desc,
-        detail: detail
+        detail: detail,
     }
 }
 
@@ -735,7 +736,7 @@ mod tests {
     fn stmt_new_types() {
         fn go() -> SqliteResult<()> {
             let db = try!(DatabaseConnection::in_memory());
-            let res = db.prepare("select 1 + 1").map( |_s| () );
+            let res = db.prepare("select 1 + 1").map(|_s| ());
             res
         }
         go().unwrap();
@@ -759,14 +760,15 @@ mod tests {
 
             with_query("select 1
                        union all
-                       select 2", |rows| {
+                       select 2",
+                       |rows| {
                 loop {
                     match rows.step() {
                         Ok(Some(ref mut row)) => {
                             count += 1;
                             sum += row.column_int(0);
-                        },
-                        _ => break
+                        }
+                        _ => break,
                     }
                 }
                 (count, sum)
@@ -778,13 +780,16 @@ mod tests {
     #[test]
     fn query_null_string() {
         with_query("select null", |rows| {
-            match rows.step() {
-                Ok(Some(ref mut row)) => {
-                    assert_eq!(row.column_text(0), None);
+                match rows.step() {
+                    Ok(Some(ref mut row)) => {
+                        assert_eq!(row.column_text(0), None);
+                    }
+                    _ => {
+                        panic!("Expected a row");
+                    }
                 }
-                _ => { panic!("Expected a row"); }
-            }
-        }).unwrap();
+            })
+            .unwrap();
     }
 
     #[test]
@@ -792,7 +797,7 @@ mod tests {
         let go = || -> SqliteResult<()> {
             let db = try!(DatabaseConnection::in_memory());
             try!(db.prepare("select bogus"));
-            Ok( () )
+            Ok(())
         };
         let err = go().err().unwrap();
         assert_eq!(err.detail(), Some("no such column: bogus".to_string()))
@@ -804,7 +809,7 @@ mod tests {
             let mut db = try!(DatabaseConnection::in_memory());
             db.ignore_detail();
             try!(db.prepare("select bogus"));
-            Ok( () )
+            Ok(())
         };
         let x: SqliteResult<()> = go();
         let err = x.err().unwrap();
@@ -822,7 +827,8 @@ mod tests {
 
     #[test]
     fn non_utf8_str() {
-        let mut stmt = DatabaseConnection::in_memory().unwrap().prepare("SELECT x'4546FF'").unwrap();
+        let mut stmt =
+            DatabaseConnection::in_memory().unwrap().prepare("SELECT x'4546FF'").unwrap();
         let mut rows = stmt.execute();
         let row = rows.step().unwrap().unwrap();
         assert_eq!(row.column_str(0), None);

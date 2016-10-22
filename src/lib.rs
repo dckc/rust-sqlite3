@@ -18,9 +18,9 @@
 //! ```rust
 //! extern crate time;
 //! extern crate sqlite3;
-//! 
+//!
 //! use time::Timespec;
-//! 
+//!
 //! use sqlite3::{
 //!     DatabaseConnection,
 //!     Query,
@@ -29,7 +29,7 @@
 //!     SqliteResult,
 //!     StatementUpdate,
 //! };
-//! 
+//!
 //! #[derive(Debug)]
 //! struct Person {
 //!     id: i32,
@@ -37,23 +37,23 @@
 //!     time_created: Timespec,
 //!     // TODO: data: Option<Vec<u8>>
 //! }
-//! 
+//!
 //! pub fn main() {
 //!     match io() {
 //!         Ok(ppl) => println!("Found people: {:?}", ppl),
 //!         Err(oops) => panic!(oops)
 //!     }
 //! }
-//! 
+//!
 //! fn io() -> SqliteResult<Vec<Person>> {
 //!     let mut conn = try!(DatabaseConnection::in_memory());
-//! 
+//!
 //!     try!(conn.exec("CREATE TABLE person (
 //!                  id              SERIAL PRIMARY KEY,
 //!                  name            VARCHAR NOT NULL,
 //!                  time_created    TIMESTAMP NOT NULL
 //!                )"));
-//! 
+//!
 //!     let me = Person {
 //!         id: 0,
 //!         name: format!("Dan"),
@@ -65,9 +65,9 @@
 //!         let changes = try!(tx.update(&[&me.name, &me.time_created]));
 //!         assert_eq!(changes, 1);
 //!     }
-//! 
+//!
 //!     let mut stmt = try!(conn.prepare("SELECT id, name, time_created FROM person"));
-//! 
+//!
 //!     let to_person = |row: &mut ResultRow| Ok(
 //!         Person {
 //!             id: row.get("id"),
@@ -92,7 +92,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate enum_primitive;
 
-use std::error::{Error};
+use std::error::Error;
 use std::fmt::Display;
 use std::fmt;
 
@@ -111,6 +111,7 @@ pub mod types;
 #[allow(dead_code)]
 #[allow(missing_docs)]
 #[allow(missing_copy_implementations)]  // until I figure out rust-bindgen #89
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub mod ffi;
 
 pub mod access;
@@ -118,8 +119,7 @@ pub mod access;
 /// Mix in `update()` convenience function.
 pub trait StatementUpdate {
     /// Execute a statement after binding any parameters.
-    fn update(&mut self,
-              values: &[&ToSql]) -> SqliteResult<u64>;
+    fn update(&mut self, values: &[&ToSql]) -> SqliteResult<u64>;
 }
 
 
@@ -134,18 +134,19 @@ impl StatementUpdate for core::PreparedStatement {
     /// `UPDATE`).
     ///
     /// [changes]: http://www.sqlite.org/c3ref/changes.html
-    fn update(&mut self,
-              values: &[&ToSql]) -> SqliteResult<u64> {
+    fn update(&mut self, values: &[&ToSql]) -> SqliteResult<u64> {
         let check = {
             try!(bind_values(self, values));
             let mut results = self.execute();
             match try!(results.step()) {
                 None => Ok(()),
-                Some(_row) => Err(SqliteError {
-                    kind: SQLITE_MISUSE,
-                    desc: "unexpected SQLITE_ROW from update",
-                    detail: None
-                })
+                Some(_row) => {
+                    Err(SqliteError {
+                        kind: SQLITE_MISUSE,
+                        desc: "unexpected SQLITE_ROW from update",
+                        detail: None,
+                    })
+                }
             }
         };
         check.map(|_ok| self.changes())
@@ -158,10 +159,7 @@ pub trait QueryEach<F>
     where F: FnMut(&mut ResultRow) -> SqliteResult<()>
 {
     /// Process rows from a query after binding parameters.
-    fn query_each(&mut self,
-                  values: &[&ToSql],
-                  each_row: &mut F
-                  ) -> SqliteResult<()>;
+    fn query_each(&mut self, values: &[&ToSql], each_row: &mut F) -> SqliteResult<()>;
 }
 
 impl<F> QueryEach<F> for core::PreparedStatement
@@ -171,11 +169,7 @@ impl<F> QueryEach<F> for core::PreparedStatement
     ///
     /// For call `each_row(row)` for each resulting step,
     /// exiting on `Err`.
-    fn query_each(&mut self,
-                  values: &[&ToSql],
-                  each_row: &mut F
-                  ) -> SqliteResult<()>
-    {
+    fn query_each(&mut self, values: &[&ToSql], each_row: &mut F) -> SqliteResult<()> {
         try!(bind_values(self, values));
         let mut results = self.execute();
         loop {
@@ -194,11 +188,7 @@ pub trait QueryFold<F, A>
     where F: Fn(&mut ResultRow, A) -> SqliteResult<A>
 {
     /// Fold rows from a query after binding parameters.
-    fn query_fold(&mut self,
-                  values: &[&ToSql],
-                  init: A,
-                  each_row: F
-                  ) -> SqliteResult<A>;
+    fn query_fold(&mut self, values: &[&ToSql], init: A, each_row: F) -> SqliteResult<A>;
 }
 
 
@@ -206,12 +196,7 @@ impl<F, A> QueryFold<F, A> for core::PreparedStatement
     where F: Fn(&mut ResultRow, A) -> SqliteResult<A>
 {
     /// Fold rows from a query after binding parameters.
-    fn query_fold(&mut self,
-                  values: &[&ToSql],
-                  init: A,
-                  f: F
-                  ) -> SqliteResult<A>
-    {
+    fn query_fold(&mut self, values: &[&ToSql], init: A, f: F) -> SqliteResult<A> {
         try!(bind_values(self, values));
         let mut results = self.execute();
         let mut accum = init;
@@ -239,8 +224,8 @@ pub trait Query<F, T>
     /// which computes a value for each row (or an error).
     fn query<'stmt>(&'stmt mut self,
                     values: &[&ToSql],
-                    txform: F
-                ) -> SqliteResult<QueryResults<'stmt, T, F>>;
+                    txform: F)
+                    -> SqliteResult<QueryResults<'stmt, T, F>>;
 }
 
 impl<F, T> Query<F, T> for core::PreparedStatement
@@ -248,12 +233,14 @@ impl<F, T> Query<F, T> for core::PreparedStatement
 {
     fn query<'stmt>(&'stmt mut self,
                     values: &[&ToSql],
-                    txform: F
-                    ) -> SqliteResult<QueryResults<'stmt, T, F>>
-    {
+                    txform: F)
+                    -> SqliteResult<QueryResults<'stmt, T, F>> {
         try!(bind_values(self, values));
         let results = self.execute();
-        Ok(QueryResults { results: results, txform: txform })
+        Ok(QueryResults {
+            results: results,
+            txform: txform,
+        })
     }
 }
 
@@ -262,7 +249,7 @@ pub struct QueryResults<'stmt, T, F>
     where F: FnMut(&mut ResultRow) -> SqliteResult<T>
 {
     results: core::ResultSet<'stmt>,
-    txform: F
+    txform: F,
 }
 
 impl<'stmt, T, F> Iterator for QueryResults<'stmt, T, F>
@@ -274,7 +261,7 @@ impl<'stmt, T, F> Iterator for QueryResults<'stmt, T, F>
         match self.results.step() {
             Ok(None) => None,
             Ok(Some(ref mut row)) => Some((self.txform)(row)),
-            Err(e) => Some(Err(e))
+            Err(e) => Some(Err(e)),
         }
     }
 }
@@ -306,23 +293,26 @@ impl<'res, 'row> ResultRowAccess for core::ResultRow<'res, 'row> {
     fn get<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> T {
         match self.get_opt(idx.clone()) {
             Ok(ok) => ok,
-            Err(err) => panic!(
-                "the column '{}' was not found in the result row ({})",
-                idx, err)
+            Err(err) => {
+                panic!("the column '{}' was not found in the result row ({})",
+                       idx,
+                       err)
+            }
         }
     }
 
     fn get_opt<I: RowIndex + Display + Clone, T: FromSql>(&mut self, idx: I) -> SqliteResult<T> {
         match idx.idx(self) {
             Some(idx) => FromSql::from_sql(self, idx),
-            None => Err(SqliteError {
-                kind: SQLITE_MISUSE,
-                desc: "no such row name/number",
-                detail: Some(format!("{}", idx))
-            })
+            None => {
+                Err(SqliteError {
+                    kind: SQLITE_MISUSE,
+                    desc: "no such row name/number",
+                    detail: Some(format!("{}", idx)),
+                })
+            }
         }
     }
-
 }
 
 /// A trait implemented by types that can index into columns of a row.
@@ -336,7 +326,9 @@ pub trait RowIndex {
 
 impl RowIndex for ColIx {
     /// Index into a row directly by uint.
-    fn idx(&self, _row: &mut ResultRow) -> Option<ColIx> { Some(*self) }
+    fn idx(&self, _row: &mut ResultRow) -> Option<ColIx> {
+        Some(*self)
+    }
 }
 
 impl RowIndex for &'static str {
@@ -345,7 +337,7 @@ impl RowIndex for &'static str {
     /// *TODO: figure out how to use lifetime of row rather than
     /// `static`.*
     fn idx(&self, row: &mut ResultRow) -> Option<ColIx> {
-        let mut ixs = 0 .. row.column_count();
+        let mut ixs = 0..row.column_count();
         ixs.find(|ix| row.with_column_name(*ix, false, |name| name == *self))
     }
 }
@@ -407,28 +399,34 @@ pub struct SqliteError {
     /// static error description
     pub desc: &'static str,
     /// dynamic detail (optional)
-    pub detail: Option<String>
+    pub detail: Option<String>,
 }
 
 impl Display for SqliteError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.detail {
-            Some(ref x) => f.write_fmt(format_args!(
-                "{} [{}] (code: {})", self.desc, x, self.kind as u32)),
-            None => f.write_fmt(format_args!(
-                "{} (code: {})", self.desc, self.kind as u32))
+            Some(ref x) => {
+                f.write_fmt(format_args!("{} [{}] (code: {})", self.desc, x, self.kind as u32))
+            }
+            None => f.write_fmt(format_args!("{} (code: {})", self.desc, self.kind as u32)),
         }
     }
 }
 
 impl SqliteError {
     /// Get a detailed description of the error
-    pub fn detail(&self) -> Option<String> { self.detail.clone() }
+    pub fn detail(&self) -> Option<String> {
+        self.detail.clone()
+    }
 }
 
 impl Error for SqliteError {
-    fn description(&self) -> &str { self.desc }
-    fn cause(&self) -> Option<&Error> { None }
+    fn description(&self) -> &str {
+        self.desc
+    }
+    fn cause(&self) -> Option<&Error> {
+        None
+    }
 }
 
 
@@ -449,18 +447,19 @@ enum_from_primitive! {
 #[cfg(test)]
 mod bind_tests {
     use super::{DatabaseConnection, ResultSet};
-    use super::{ResultRowAccess};
-    use super::{SqliteResult};
+    use super::ResultRowAccess;
+    use super::SqliteResult;
 
     #[test]
     fn bind_fun() {
         fn go() -> SqliteResult<()> {
             let mut database = try!(DatabaseConnection::in_memory());
 
-            try!(database.exec(
-                "BEGIN;
+            try!(database.exec("
+                BEGIN;
                 CREATE TABLE test (id int, name text, address text);
-                INSERT INTO test (id, name, address) VALUES (1, 'John Doe', '123 w Pine');
+                INSERT INTO test (id, name, address)
+                VALUES (1, 'John Doe', '123 w Pine');
                 COMMIT;"));
 
             {
@@ -482,23 +481,23 @@ mod bind_tests {
                     assert_eq!(row.get::<u32, i32>(0), 1);
                     // TODO let name = q.get_text(1);
                     // assert_eq!(name.as_slice(), "John Doe");
-                },
-                _ => panic!()
+                }
+                _ => panic!(),
             }
 
             match rows.step() {
                 Ok(Some(ref mut row)) => {
                     assert_eq!(row.get::<u32, i32>(0), 2);
-                    //TODO let addr = q.get_text(2);
+                    // TODO let addr = q.get_text(2);
                     // assert_eq!(addr.as_slice(), "345 e Walnut");
-                },
-                _ => panic!()
+                }
+                _ => panic!(),
             }
             Ok(())
         }
         match go() {
             Ok(_) => (),
-            Err(e) => panic!("oops! {:?}", e)
+            Err(e) => panic!("oops! {:?}", e),
         }
     }
 
@@ -520,14 +519,15 @@ mod bind_tests {
 
             with_query("select 1 as col1
                        union all
-                       select 2", |rows| {
+                       select 2",
+                       |rows| {
                 loop {
                     match rows.step() {
                         Ok(Some(ref mut row)) => {
                             count += 1;
                             sum += row.column_int(0);
-                        },
-                        _ => break
+                        }
+                        _ => break,
                     }
                 }
                 (count, sum)
@@ -545,11 +545,7 @@ mod bind_tests {
 
         let go = || match io() {
             Ok(_) => panic!(),
-            Err(oops) => {
-                format!("{:?}: {}: {}",
-                        oops.kind, oops.desc,
-                        oops.detail.unwrap())
-            }
+            Err(oops) => format!("{:?}: {}: {}", oops.kind, oops.desc, oops.detail.unwrap()),
         };
 
         let expected = "SQLITE_ERROR: sqlite3_exec: near \"gobbledygook\": syntax error";

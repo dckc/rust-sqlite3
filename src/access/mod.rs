@@ -32,11 +32,10 @@ pub mod flags;
 ///
 /// [open]: http://www.sqlite.org/c3ref/open.html
 pub fn open(filename: &str, flags: Option<OpenFlags>) -> SqliteResult<DatabaseConnection> {
-    DatabaseConnection::new(
-        ByFilename {
-            filename: filename,
-            flags: flags.unwrap_or_default()
-        })
+    DatabaseConnection::new(ByFilename {
+        filename: filename,
+        flags: flags.unwrap_or_default(),
+    })
 }
 
 /// Access to a database by filename
@@ -44,7 +43,7 @@ pub struct ByFilename<'a> {
     /// Filename or sqlite3 style URI.
     pub filename: &'a str,
     /// Flags for additional control over the new database connection.
-    pub flags: OpenFlags
+    pub flags: OpenFlags,
 }
 
 impl<'a> Access for ByFilename<'a> {
@@ -69,9 +68,9 @@ mod tests {
         let mut temp_directory = temp_dir();
         temp_directory.push("db1");
         let path = temp_directory.into_os_string().into_string().unwrap();
-        DatabaseConnection::new(
-            ByFilename {
-                filename: path.as_ref(), flags: Default::default()
+        DatabaseConnection::new(ByFilename {
+                filename: path.as_ref(),
+                flags: Default::default(),
             })
             .unwrap();
     }

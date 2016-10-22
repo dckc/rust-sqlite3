@@ -19,8 +19,6 @@ bitflags!(
 
 impl Default for OpenFlags {
     fn default() -> OpenFlags {
-        OPEN_READWRITE
-            | OPEN_CREATE
-            | OPEN_NOMUTEX
+        OPEN_READWRITE | OPEN_CREATE | OPEN_NOMUTEX
     }
 }

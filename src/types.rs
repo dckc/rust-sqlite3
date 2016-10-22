@@ -1,10 +1,7 @@
 //! Type conversions for binding parameters and getting query results.
 
-use super::{PreparedStatement, ResultRow,
-            ColIx, ParamIx};
-use super::{
-    SqliteResult, SqliteErrorCode, SqliteError,
-};
+use super::{PreparedStatement, ResultRow, ColIx, ParamIx};
+use super::{SqliteResult, SqliteErrorCode, SqliteError};
 use super::ColumnType::SQLITE_NULL;
 
 use time;
@@ -24,7 +21,7 @@ pub trait ToSql {
 /// [column]: http://www.sqlite.org/c3ref/column_blob.html
 ///
 ///   - *TODO: many more implementors, including Option<T>*
-pub trait FromSql : Sized {
+pub trait FromSql: Sized {
     /// Try to extract a `Self` type value from the `col`th colum of a `ResultRow`.
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<Self>;
 }
@@ -36,7 +33,9 @@ impl ToSql for i32 {
 }
 
 impl FromSql for i32 {
-    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<i32> { Ok(row.column_int(col)) }
+    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<i32> {
+        Ok(row.column_int(col))
+    }
 }
 
 impl ToSql for i64 {
@@ -46,7 +45,9 @@ impl ToSql for i64 {
 }
 
 impl FromSql for i64 {
-    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<i64> { Ok(row.column_int64(col)) }
+    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<i64> {
+        Ok(row.column_int64(col))
+    }
 }
 
 impl ToSql for f64 {
@@ -56,7 +57,9 @@ impl ToSql for f64 {
 }
 
 impl FromSql for f64 {
-    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<f64> { Ok(row.column_double(col)) }
+    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<f64> {
+        Ok(row.column_double(col))
+    }
 }
 
 impl ToSql for bool {
@@ -66,14 +69,16 @@ impl ToSql for bool {
 }
 
 impl FromSql for bool {
-    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<bool> { Ok(row.column_int(col)!=0) }
+    fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<bool> {
+        Ok(row.column_int(col) != 0)
+    }
 }
 
 impl<T: ToSql + Clone> ToSql for Option<T> {
     fn to_sql(&self, s: &mut PreparedStatement, ix: ParamIx) -> SqliteResult<()> {
         match (*self).clone() {
             Some(x) => x.to_sql(s, ix),
-            None => s.bind_null(ix)
+            None => s.bind_null(ix),
         }
     }
 }
@@ -82,7 +87,7 @@ impl<T: FromSql + Clone> FromSql for Option<T> {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<Option<T>> {
         match row.column_type(col) {
             SQLITE_NULL => Ok(None),
-            _ => FromSql::from_sql(row, col).map(|x| Some(x))
+            _ => FromSql::from_sql(row, col).map(|x| Some(x)),
         }
     }
 }
@@ -123,7 +128,7 @@ pub static SQLITE_TIME_FMT: &'static str = "%F %T";
 impl FromSql for time::Tm {
     fn from_sql(row: &ResultRow, col: ColIx) -> SqliteResult<time::Tm> {
         let txt = row.column_text(col).unwrap_or(String::new());
-        Ok( try!(time::strptime(txt.as_ref(), SQLITE_TIME_FMT)) )
+        Ok(try!(time::strptime(txt.as_ref(), SQLITE_TIME_FMT)))
     }
 }
 
@@ -158,7 +163,7 @@ impl FromSql for time::Timespec {
 mod tests {
     use time::Tm;
     use super::super::{DatabaseConnection, SqliteResult, ResultSet};
-    use super::super::{ResultRowAccess};
+    use super::super::ResultRowAccess;
 
     fn with_query<T, F>(sql: &str, mut f: F) -> SqliteResult<T>
         where F: FnMut(&mut ResultSet) -> T
@@ -178,24 +183,24 @@ mod tests {
             let mut results = stmt.execute();
             match results.step() {
                 Ok(Some(ref mut row)) => {
-                    assert_eq!(
-                        row.get::<u32, Tm>(0),
-                        Tm { tm_sec: 0,
-                             tm_min: 0,
-                             tm_hour: 3,
-                             tm_mday: 3,
-                             tm_mon: 0,
-                             tm_year: 101,
-                             tm_wday: 0,
-                             tm_yday: 0,
-                             tm_isdst: 0,
-                             tm_utcoff: 0,
-                             tm_nsec: 0
-                        });
+                    assert_eq!(row.get::<u32, Tm>(0),
+                               Tm {
+                                   tm_sec: 0,
+                                   tm_min: 0,
+                                   tm_hour: 3,
+                                   tm_mday: 3,
+                                   tm_mon: 0,
+                                   tm_year: 101,
+                                   tm_wday: 0,
+                                   tm_yday: 0,
+                                   tm_isdst: 0,
+                                   tm_utcoff: 0,
+                                   tm_nsec: 0,
+                               });
                     Ok(())
-                },
+                }
                 Ok(None) => panic!("no row"),
-                Err(oops) =>  panic!("error: {:?}", oops)
+                Err(oops) => panic!("error: {:?}", oops),
             }
         }
         go().unwrap();
@@ -204,29 +209,31 @@ mod tests {
     #[test]
     fn get_invalid_tm() {
         with_query("select 'not a time'", |results| {
-            match results.step() {
-                Ok(Some(ref mut row)) => {
-                    let x : SqliteResult<Tm> = row.get_opt(0u32);
-                    assert!(x.is_err());
-                },
-                Ok(None) => panic!("no row"),
-                Err(oops) =>  panic!("error: {:?}", oops)
-            };
-        }).unwrap();
+                match results.step() {
+                    Ok(Some(ref mut row)) => {
+                        let x: SqliteResult<Tm> = row.get_opt(0u32);
+                        assert!(x.is_err());
+                    }
+                    Ok(None) => panic!("no row"),
+                    Err(oops) => panic!("error: {:?}", oops),
+                };
+            })
+            .unwrap();
     }
 
     #[test]
     fn select_blob() {
         with_query("select x'ff0db0'", |results| {
-            match results.step() {
-                Ok(Some(ref mut row)) => {
-                    let x : SqliteResult<Vec<u8>> = row.get_opt(0u32);
-                    assert_eq!(x.ok().unwrap(), [0xff, 0x0d, 0xb0].to_vec());
-                },
-                Ok(None) => panic!("no row"),
-                Err(oops) =>  panic!("error: {:?}", oops)
-            };
-        }).unwrap();
+                match results.step() {
+                    Ok(Some(ref mut row)) => {
+                        let x: SqliteResult<Vec<u8>> = row.get_opt(0u32);
+                        assert_eq!(x.ok().unwrap(), [0xff, 0x0d, 0xb0].to_vec());
+                    }
+                    Ok(None) => panic!("no row"),
+                    Err(oops) => panic!("error: {:?}", oops),
+                };
+            })
+            .unwrap();
     }
 }
 
