@@ -1,8 +1,8 @@
 # Rust-Sqlite3
 
-Rustic bindings for sqlite3.
+Rustic bindings for sqlite3. *OBSOLETE in favor of [jgallagher/rusqlite](https://github.com/jgallagher/rusqlite)*
 
-Copyright (c) 2014 [Dan Connolly][dckc]
+Copyright (c) 2014-2017 [Dan Connolly][dckc] and contributors
 
 Share and enjoy. LICENSE: MIT.
 
